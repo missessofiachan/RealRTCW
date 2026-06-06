@@ -29,6 +29,103 @@ static time_t next_discord_connect_time = 0;
 static time_t next_allowed_update_time = 0; // Anti-spam throttling timer
 static time_t start_time = 0;
 
+// Persistent stream framing buffers
+static char incoming_buf[4096];
+static int incoming_len = 0;
+
+typedef struct {
+  const char *internal_name;
+  const char *display_name;
+} lookupTable_t;
+
+// Unified map dictionary
+static const lookupTable_t CampaignMaps[] = {
+    // --- Main Campaign ---
+    {"intro", "Prologue"},
+    {"escape1", "Ominous Rumors"},
+    {"escape2", "The Escape"},
+    {"tram", "Tram Ride"},
+    {"village1", "Wulfburg"},
+    {"village2", "Ruined Village"},
+    {"crypt1", "Catacombs"},
+    {"crypt2", "Crypt"},
+    {"church", "The Defiled Church"},
+    {"boss1", "The Defiled Church (Boss)"},
+    {"forest", "Forest Compound"},
+    {"rocket", "Rocket Base"},
+    {"baseout", "Radar Installation"},
+    {"assault", "Air Base Assault"},
+    {"sfm", "Kugelstadt"},
+    {"factory", "The Ruined Factory"},
+    {"trainyard", "The Trainyards"},
+    {"swerve", "Secret Weapons Facility"},
+    {"hideout", "Ice Station Cobra"},
+    {"chateau", "Chateau"},
+    {"dark", "Dark Descent"},
+    {"dig", "The Dig"},
+    {"castle", "Return to Castle Wolfenstein"},
+    {"end", "Heinrich"},
+    {"boss2", "Heinrich (Boss)"},
+    {"dam", "X-Labs"},
+    {"cobb", "Chateau Cobb"},
+    {"keep", "Castle Keep"},
+    {"xlabs", "X-Labs"},
+    {"fendrich", "Fendrich's Office"},
+    {"norway", "Norway"},
+
+    // --- Malta Campaign ---
+    {"malta_0", "Malta - Prologue"},
+    {"malta_1", "Malta - The Citadel"},
+    {"malta_2", "Malta - Mdina"},
+    {"malta_3", "Malta - Catacombs"},
+    {"malta_4", "Malta - The Harbor"},
+    {"malta_5", "Malta - The Fortress"},
+    {"malta_menu", "Malta - Main Menu"},
+
+    // --- Survival Maps ---
+    {"sv_barn", "Survival - Barn"},
+    {"sv_boss1", "Survival - Boss"},
+    {"sv_castle", "Survival - Castle"},
+    {"sv_crypt1", "Survival - Crypt"},
+    {"sv_dig", "Survival - The Dig"},
+    {"sv_escape2", "Survival - Escape"},
+    {"sv_karsiah", "Survival - Karsiah"},
+    {"sv_kugelstadt", "Survival - Kugelstadt"},
+    {"sv_norway", "Survival - Norway"},
+    {"sv_river_outpost", "Survival - River Outpost"},
+    {"sv_safe", "Survival - Safe House"},
+
+    // --- Enemy Territory / EE Expansion ---
+    {"ee1", "Cursed Sands (Ras el-Hadid)"},
+    {"ee2", "Cursed Sands (The Excavation)"},
+    {"ee3", "Cursed Sands (The Temple)"},
+    {"ee4", "Cursed Sands (The Fortress)"},
+    {"ee5", "Cursed Sands (The Pyramid)"},
+    {NULL, NULL}};
+
+// Unified modification folder lookup table
+static const lookupTable_t ModNames[] = {
+    {"EE", "Cursed Sands"},
+    {"karsiah", "Karsiah Raid"},
+    {"2178638114", "Beach Assault"},
+    {"2195436928", "Capuzzo"},
+    {"2223087973", "Vendetta Dilogy"},
+    {"2229917682", "Project 51"},
+    {"2230658534", "Pharaoh's Curse"},
+    {"2230721200", "Flying Saucers"},
+    {"2231522108", "Age of Horror"},
+    {"2232360724", "Stalingrad"},
+    {"2232931912", "Time Gate"},
+    {"2234651760", "Trondheim Trilogy"},
+    {"2239016506", "Devil's Manor 2: Edge of Darkness"},
+    {"2253494213", "The Dark Army: Uprising Remastered"},
+    {"2600685791", "Wolfenstein: ET Single-Player"},
+    {"2872954732", "Into the Eagle's Nest"},
+    {"3116640063", "Vendetta 3"},
+    {"3289129216", "RealRTCW Remastered Textures"},
+    {"3693642344", "Enhanced Weapons: Remastered"},
+    {NULL, NULL}};
+
 static void discord_log(const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -40,127 +137,15 @@ static void discord_log(const char *fmt, ...) {
   va_end(args);
 }
 
-// Maps internal map filenames to their display titles (matching Steam
-// localization).
 static const char *GetFriendlyMapName(const char *mapname) {
   if (!mapname || !mapname[0])
     return "Unknown Map";
 
-  // --- Main Campaign ---
-  if (strcasecmp(mapname, "intro") == 0)
-    return "Prologue";
-  if (strcasecmp(mapname, "escape1") == 0)
-    return "Ominous Rumors";
-  if (strcasecmp(mapname, "escape2") == 0)
-    return "The Escape";
-  if (strcasecmp(mapname, "tram") == 0)
-    return "Tram Ride";
-  if (strcasecmp(mapname, "village1") == 0)
-    return "Wulfburg";
-  if (strcasecmp(mapname, "village2") == 0)
-    return "Ruined Village";
-  if (strcasecmp(mapname, "crypt1") == 0)
-    return "Catacombs";
-  if (strcasecmp(mapname, "crypt2") == 0)
-    return "Crypt";
-  if (strcasecmp(mapname, "church") == 0)
-    return "The Defiled Church";
-  if (strcasecmp(mapname, "boss1") == 0)
-    return "The Defiled Church (Boss)";
-  if (strcasecmp(mapname, "forest") == 0)
-    return "Forest Compound";
-  if (strcasecmp(mapname, "rocket") == 0)
-    return "Rocket Base";
-  if (strcasecmp(mapname, "baseout") == 0)
-    return "Radar Installation";
-  if (strcasecmp(mapname, "assault") == 0)
-    return "Air Base Assault";
-  if (strcasecmp(mapname, "sfm") == 0)
-    return "Kugelstadt";
-  if (strcasecmp(mapname, "factory") == 0)
-    return "The Ruined Factory";
-  if (strcasecmp(mapname, "trainyard") == 0)
-    return "The Trainyards";
-  if (strcasecmp(mapname, "swerve") == 0)
-    return "Secret Weapons Facility";
-  if (strcasecmp(mapname, "hideout") == 0)
-    return "Ice Station Cobra";
-  if (strcasecmp(mapname, "chateau") == 0)
-    return "Chateau";
-  if (strcasecmp(mapname, "dark") == 0)
-    return "Dark Descent";
-  if (strcasecmp(mapname, "dig") == 0)
-    return "The Dig";
-  if (strcasecmp(mapname, "castle") == 0)
-    return "Return to Castle Wolfenstein";
-  if (strcasecmp(mapname, "end") == 0)
-    return "Heinrich";
-  if (strcasecmp(mapname, "boss2") == 0)
-    return "Heinrich (Boss)";
-  if (strcasecmp(mapname, "dam") == 0)
-    return "X-Labs";
-  if (strcasecmp(mapname, "cobb") == 0)
-    return "Chateau Cobb";
-  if (strcasecmp(mapname, "keep") == 0)
-    return "Castle Keep";
-  if (strcasecmp(mapname, "xlabs") == 0)
-    return "X-Labs";
-  if (strcasecmp(mapname, "fendrich") == 0)
-    return "Fendrich's Office";
-  if (strcasecmp(mapname, "norway") == 0)
-    return "Norway";
-
-  // --- Malta Campaign ---
-  if (strcasecmp(mapname, "malta_0") == 0)
-    return "Malta - Prologue";
-  if (strcasecmp(mapname, "malta_1") == 0)
-    return "Malta - The Citadel";
-  if (strcasecmp(mapname, "malta_2") == 0)
-    return "Malta - Mdina";
-  if (strcasecmp(mapname, "malta_3") == 0)
-    return "Malta - Catacombs";
-  if (strcasecmp(mapname, "malta_4") == 0)
-    return "Malta - The Harbor";
-  if (strcasecmp(mapname, "malta_5") == 0)
-    return "Malta - The Fortress";
-  if (strcasecmp(mapname, "malta_menu") == 0)
-    return "Malta - Main Menu";
-
-  // --- Survival Maps ---
-  if (strcasecmp(mapname, "sv_barn") == 0)
-    return "Survival - Barn";
-  if (strcasecmp(mapname, "sv_boss1") == 0)
-    return "Survival - Boss";
-  if (strcasecmp(mapname, "sv_castle") == 0)
-    return "Survival - Castle";
-  if (strcasecmp(mapname, "sv_crypt1") == 0)
-    return "Survival - Crypt";
-  if (strcasecmp(mapname, "sv_dig") == 0)
-    return "Survival - The Dig";
-  if (strcasecmp(mapname, "sv_escape2") == 0)
-    return "Survival - Escape";
-  if (strcasecmp(mapname, "sv_karsiah") == 0)
-    return "Survival - Karsiah";
-  if (strcasecmp(mapname, "sv_kugelstadt") == 0)
-    return "Survival - Kugelstadt";
-  if (strcasecmp(mapname, "sv_norway") == 0)
-    return "Survival - Norway";
-  if (strcasecmp(mapname, "sv_river_outpost") == 0)
-    return "Survival - River Outpost";
-  if (strcasecmp(mapname, "sv_safe") == 0)
-    return "Survival - Safe House";
-
-  // --- Enemy Territory / EE Expansion ---
-  if (strcasecmp(mapname, "ee1") == 0)
-    return "Cursed Sands (Ras el-Hadid)";
-  if (strcasecmp(mapname, "ee2") == 0)
-    return "Cursed Sands (The Excavation)";
-  if (strcasecmp(mapname, "ee3") == 0)
-    return "Cursed Sands (The Temple)";
-  if (strcasecmp(mapname, "ee4") == 0)
-    return "Cursed Sands (The Fortress)";
-  if (strcasecmp(mapname, "ee5") == 0)
-    return "Cursed Sands (The Pyramid)";
+  for (int i = 0; CampaignMaps[i].internal_name != NULL; i++) {
+    if (strcasecmp(mapname, CampaignMaps[i].internal_name) == 0) {
+      return CampaignMaps[i].display_name;
+    }
+  }
 
   if (strncasecmp(mapname, "cutscene", 8) == 0)
     return "Cutscene";
@@ -170,51 +155,15 @@ static const char *GetFriendlyMapName(const char *mapname) {
   return NULL;
 }
 
-// Maps fs_game folder names to human-readable mod names.
 static const char *GetModDisplayName(const char *fs_game) {
   if (!fs_game || !fs_game[0] || strcasecmp(fs_game, "main") == 0)
     return NULL;
 
-  if (strcasecmp(fs_game, "EE") == 0)
-    return "Cursed Sands";
-  if (strcasecmp(fs_game, "karsiah") == 0)
-    return "Karsiah Raid";
-
-  // Workshop IDs
-  if (strcmp(fs_game, "2178638114") == 0)
-    return "Beach Assault";
-  if (strcmp(fs_game, "2195436928") == 0)
-    return "Capuzzo";
-  if (strcmp(fs_game, "2223087973") == 0)
-    return "Vendetta Dilogy";
-  if (strcmp(fs_game, "2229917682") == 0)
-    return "Project 51";
-  if (strcmp(fs_game, "2230658534") == 0)
-    return "Pharaoh's Curse";
-  if (strcmp(fs_game, "2230721200") == 0)
-    return "Flying Saucers";
-  if (strcmp(fs_game, "2231522108") == 0)
-    return "Age of Horror";
-  if (strcmp(fs_game, "2232360724") == 0)
-    return "Stalingrad";
-  if (strcmp(fs_game, "2232931912") == 0)
-    return "Time Gate";
-  if (strcmp(fs_game, "2234651760") == 0)
-    return "Trondheim Trilogy";
-  if (strcmp(fs_game, "2239016506") == 0)
-    return "Devil's Manor 2: Edge of Darkness";
-  if (strcmp(fs_game, "2253494213") == 0)
-    return "The Dark Army: Uprising Remastered";
-  if (strcmp(fs_game, "2600685791") == 0)
-    return "Wolfenstein: ET Single-Player";
-  if (strcmp(fs_game, "2872954732") == 0)
-    return "Into the Eagle's Nest";
-  if (strcmp(fs_game, "3116640063") == 0)
-    return "Vendetta 3";
-  if (strcmp(fs_game, "3289129216") == 0)
-    return "RealRTCW Remastered Textures";
-  if (strcmp(fs_game, "3693642344") == 0)
-    return "Enhanced Weapons: Remastered";
+  for (int i = 0; ModNames[i].internal_name != NULL; i++) {
+    if (strcasecmp(fs_game, ModNames[i].internal_name) == 0) {
+      return ModNames[i].display_name;
+    }
+  }
 
   return fs_game;
 }
@@ -252,11 +201,15 @@ static void ExtractMapBaseName(const char *in, char *out, int maxlen) {
 static void StripColorCodes(const char *in, char *out, int maxlen) {
   int j = 0;
   for (int i = 0; in[i] && j < maxlen - 1; i++) {
-    if (in[i] == '^' && in[i + 1] >= '0' && in[i + 1] <= '9') {
-      i++;
-    } else {
-      out[j++] = in[i];
+    if (in[i] == '^' && in[i + 1] != '\0') {
+      char c = in[i + 1];
+      if ((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+          (c >= 'A' && c <= 'Z')) {
+        i++;
+        continue;
+      }
     }
+    out[j++] = in[i];
   }
   out[j] = '\0';
 }
@@ -266,8 +219,36 @@ void Discord_Shutdown(void) {
     close(discord_fd);
     discord_fd = -1;
     discord_ready = 0;
+    incoming_len = 0;
     discord_log("Discord: Connection closed.\n");
   }
+}
+
+static int Discord_WriteAll(const void *buf, size_t len) {
+  if (discord_fd < 0)
+    return 0;
+
+  size_t total_sent = 0;
+  const char *ptr = (const char *)buf;
+
+  while (total_sent < len) {
+    ssize_t sent =
+        send(discord_fd, ptr + total_sent, len - total_sent, MSG_NOSIGNAL);
+    if (sent < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        continue;
+      }
+      discord_log("Discord: Write error occurred (%d).\n", errno);
+      Discord_Shutdown();
+      return 0;
+    } else if (sent == 0) {
+      discord_log("Discord: Connection lost during send operation.\n");
+      Discord_Shutdown();
+      return 0;
+    }
+    total_sent += sent;
+  }
+  return 1;
 }
 
 static int Discord_Connect(void) {
@@ -295,6 +276,7 @@ static int Discord_Connect(void) {
       if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
         discord_fd = fd;
         discord_ready = 0;
+        incoming_len = 0;
 
         const char *handshake_json =
             "{\"v\":1,\"client_id\":\"1500118711774744737\"}";
@@ -302,8 +284,10 @@ static int Discord_Connect(void) {
         header[0] = 0;
         header[1] = (uint32_t)strlen(handshake_json);
 
-        write(discord_fd, header, sizeof(header));
-        write(discord_fd, handshake_json, header[1]);
+        if (!Discord_WriteAll(header, sizeof(header)) ||
+            !Discord_WriteAll(handshake_json, header[1])) {
+          return 0;
+        }
         discord_log("Discord: Connected successfully to %s\n", addr.sun_path);
         return 1;
       }
@@ -318,37 +302,51 @@ static void Discord_Pump(void) {
   if (discord_fd < 0)
     return;
 
-  char dummy[2048];
-  while (1) {
-    ssize_t r = recv(discord_fd, dummy, sizeof(dummy) - 1, MSG_DONTWAIT);
-    if (r < 0) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
-        break;
-      discord_log("Discord: Read error %d.\n", errno);
-      Discord_Shutdown();
-      break;
-    } else if (r == 0) {
-      discord_log("Discord: EOF received (Discord closed).\n");
-      Discord_Shutdown();
-      break;
-    } else {
-      dummy[r] = '\0';
-      if (r > 8) {
-        // Safe unaligned binary parsing via memcpy
-        uint32_t op, len;
-        memcpy(&op, dummy, 4);
-        memcpy(&len, dummy + 4, 4);
+  ssize_t r = recv(discord_fd, incoming_buf + incoming_len,
+                   sizeof(incoming_buf) - incoming_len - 1, MSG_DONTWAIT);
+  if (r < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+      return;
+    discord_log("Discord: Read error %d.\n", errno);
+    Discord_Shutdown();
+    return;
+  } else if (r == 0) {
+    discord_log("Discord: EOF received (Discord closed).\n");
+    Discord_Shutdown();
+    return;
+  }
 
-        discord_log("Discord reply (op %u, len %u): %s\n", op, len, dummy + 8);
-        if (!discord_ready && strstr(dummy + 8, "\"evt\":\"READY\"")) {
-          discord_ready = 1;
-          discord_needs_update = 1;
-          discord_log("Discord: Ready event received.\n");
-        }
-      } else {
-        discord_log("Discord reply short (len %d)\n", (int)r);
-      }
+  incoming_len += r;
+  incoming_buf[incoming_len] = '\0';
+
+  while (incoming_len >= 8) {
+    uint32_t op, payload_len;
+    memcpy(&op, incoming_buf, 4);
+    memcpy(&payload_len, incoming_buf + 4, 4);
+
+    if (incoming_len < 8 + payload_len) {
+      break;
     }
+
+    char boundary_char = incoming_buf[8 + payload_len];
+    incoming_buf[8 + payload_len] = '\0';
+
+    char *payload = incoming_buf + 8;
+    discord_log("Discord reply (op %u, len %u): %s\n", op, payload_len,
+                payload);
+
+    if (!discord_ready && strstr(payload, "\"evt\":\"READY\"")) {
+      discord_ready = 1;
+      discord_needs_update = 1;
+      discord_log("Discord: Ready event received.\n");
+    }
+
+    incoming_buf[8 + payload_len] = boundary_char;
+
+    int packet_total_size = 8 + payload_len;
+    memmove(incoming_buf, incoming_buf + packet_total_size,
+            incoming_len - packet_total_size);
+    incoming_len -= packet_total_size;
   }
 }
 
@@ -356,11 +354,9 @@ static void Discord_Update(void) {
   if (!discord_needs_update)
     return;
 
-  // Enforce API Rate Limiting Cooldown (max 1 status call per 4 seconds)
   time_t cur_time = time(NULL);
   if (cur_time < next_allowed_update_time) {
-    return; // Keep discord_needs_update flagged to try again on next framework
-            // loops
+    return;
   }
 
   if (!Discord_Connect()) {
@@ -373,15 +369,21 @@ static void Discord_Update(void) {
   }
 
   discord_needs_update = 0;
-  next_allowed_update_time = cur_time + 4; // Reset internal tracking window
+  next_allowed_update_time = cur_time + 4;
 
   char details[128] = "";
   char state[128] = "";
   char timestamp_json[64] = "";
 
+  // DYNAMIC MAIN MENU CHECK[cite: 1]
   if (strcmp(discord_display, "#status_mainmenu") == 0 || !discord_display[0]) {
+    const char *mod_name = GetModDisplayName(discord_fs_game);
     snprintf(details, sizeof(details), "Main Menu");
-    snprintf(state, sizeof(state), "Return to Castle Wolfenstein");
+    if (mod_name) {
+      snprintf(state, sizeof(state), "%s", mod_name);
+    } else {
+      snprintf(state, sizeof(state), "Return to Castle Wolfenstein");
+    }
   } else {
     char basename[64];
     ExtractMapBaseName(discord_mapname, basename, sizeof(basename));
@@ -410,11 +412,9 @@ static void Discord_Update(void) {
       Q_strncpyz(stats_buf, discord_cs_missionstats + 2, sizeof(stats_buf));
 
       int sec = 0, sec_total = 0, treas = 0, treas_total = 0;
-      // Scans out the raw game mechanics stats variables directly
       sscanf(stats_buf, ",%*d,%*d,%*d,%*d,%*d,%d,%d,%d,%d", &sec, &sec_total,
              &treas, &treas_total);
 
-      // Build live string omitting text timer completely
       char stats_str[96] = "";
       if (sec_total > 0 && treas_total > 0) {
         snprintf(stats_str, sizeof(stats_str), "Secrets %d/%d | Treasure %d/%d",
@@ -470,16 +470,24 @@ static void Discord_Update(void) {
   header[0] = 1;
   header[1] = (uint32_t)strlen(payload);
 
-  write(discord_fd, header, sizeof(header));
-  write(discord_fd, payload, header[1]);
+  Discord_WriteAll(header, sizeof(header));
+  Discord_WriteAll(payload, header[1]);
 }
 
 void Discord_Init(void) {}
 
 void Discord_RunFrame(void) {
-  if (clc.state >= CA_CONNECTED) {
-    qboolean changed = qfalse;
+  qboolean changed = qfalse;
 
+  // GLOBAL MOD CHECKING: Always monitor active mod directory, even at main
+  // menu[cite: 1]
+  const char *fsgame_val = Cvar_VariableString("fs_game");
+  if (strcmp(discord_fs_game, fsgame_val) != 0) {
+    Q_strncpyz(discord_fs_game, fsgame_val, sizeof(discord_fs_game));
+    changed = qtrue;
+  }
+
+  if (clc.state >= CA_CONNECTED) {
     if (strcmp(discord_display, "#status_map") != 0) {
       Q_strncpyz(discord_display, "#status_map", sizeof(discord_display));
       changed = qtrue;
@@ -510,12 +518,6 @@ void Discord_RunFrame(void) {
       changed = qtrue;
     }
 
-    const char *fsgame_val = Cvar_VariableString("fs_game");
-    if (strcmp(discord_fs_game, fsgame_val) != 0) {
-      Q_strncpyz(discord_fs_game, fsgame_val, sizeof(discord_fs_game));
-      changed = qtrue;
-    }
-
     const char *skill_val = Cvar_VariableString("g_gameskill");
     if (strcmp(discord_skill, skill_val) != 0) {
       Q_strncpyz(discord_skill, skill_val, sizeof(discord_skill));
@@ -533,6 +535,10 @@ void Discord_RunFrame(void) {
       discord_cs_message[0] = '\0';
       discord_cs_missionstats[0] = '\0';
       start_time = 0;
+      changed = qtrue;
+    }
+
+    if (changed) {
       discord_needs_update = 1;
     }
   }
