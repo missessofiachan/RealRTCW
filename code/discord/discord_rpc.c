@@ -29,6 +29,10 @@ static time_t next_discord_connect_time = 0;
 static time_t next_allowed_update_time = 0; // Anti-spam throttling timer
 static time_t start_time = 0;
 
+// Dynamic state-tracking variables to prevent redundant parsing/spamming
+static int discord_last_health = -1;
+static int discord_last_wave = -1;
+
 // Persistent stream framing buffers
 static char incoming_buf[4096];
 static int incoming_len = 0;
@@ -95,7 +99,7 @@ static const lookupTable_t CampaignMaps[] = {
     {"sv_river_outpost", "Survival - River Outpost"},
     {"sv_safe", "Survival - Safe House"},
 
-    // --- Enemy Territory / EE Expansion ---
+    // --- Cursed Sands / EE Expansion ---
     {"ee1", "Cursed Sands (Ras el-Hadid)"},
     {"ee2", "Cursed Sands (The Excavation)"},
     {"ee3", "Cursed Sands (The Temple)"},
@@ -375,7 +379,7 @@ static void Discord_Update(void) {
   char state[128] = "";
   char timestamp_json[64] = "";
 
-  // DYNAMIC MAIN MENU CHECK[cite: 1]
+  // DYNAMIC MAIN MENU CHECK
   if (strcmp(discord_display, "#status_mainmenu") == 0 || !discord_display[0]) {
     const char *mod_name = GetModDisplayName(discord_fs_game);
     snprintf(details, sizeof(details), "Main Menu");
@@ -404,8 +408,30 @@ static void Discord_Update(void) {
       }
     }
 
+    // --- Dynamic Multi-Part State Builder ---
     int skill_int = atoi(discord_skill);
+    const char *skill_name = GetFriendlySkillName(skill_int);
 
+    char health_str[32] = "";
+    if (clc.state == CA_ACTIVE && cl.snap.valid) {
+      int health = cl.snap.ps.stats[STAT_HEALTH];
+      if (health < 0)
+        health = 0;
+      int max_health = cl.snap.ps.stats[STAT_MAX_HEALTH];
+      if (max_health <= 0)
+        max_health = 100;
+      snprintf(health_str, sizeof(health_str), "❤️ %d/%d", health, max_health);
+    }
+
+    char wave_str[32] = "";
+    qboolean is_survival =
+        (Cvar_VariableIntegerValue("g_gametype") == 3); // GT_SURVIVAL = 3
+    if (is_survival && clc.state == CA_ACTIVE && cl.snap.valid) {
+      int wave = cl.snap.ps.persistant[PERS_WAVES];
+      snprintf(wave_str, sizeof(wave_str), "Wave %d", wave);
+    }
+
+    char stats_str[96] = "";
     if (discord_cs_missionstats[0] &&
         strncmp(discord_cs_missionstats, "s=", 2) == 0) {
       char stats_buf[128];
@@ -415,26 +441,58 @@ static void Discord_Update(void) {
       sscanf(stats_buf, ",%*d,%*d,%*d,%*d,%*d,%d,%d,%d,%d", &sec, &sec_total,
              &treas, &treas_total);
 
-      char stats_str[96] = "";
       if (sec_total > 0 && treas_total > 0) {
-        snprintf(stats_str, sizeof(stats_str), "Secrets %d/%d | Treasure %d/%d",
-                 sec, sec_total, treas, treas_total);
+        snprintf(stats_str, sizeof(stats_str),
+                 "🔍 Secrets %d/%d | 💰 Treasure %d/%d", sec, sec_total, treas,
+                 treas_total);
       } else if (sec_total > 0) {
-        snprintf(stats_str, sizeof(stats_str), "Secrets %d/%d", sec, sec_total);
+        snprintf(stats_str, sizeof(stats_str), "🔍 Secrets %d/%d", sec,
+                 sec_total);
       } else if (treas_total > 0) {
-        snprintf(stats_str, sizeof(stats_str), "Treasure %d/%d", treas,
+        snprintf(stats_str, sizeof(stats_str), "💰 Treasure %d/%d", treas,
                  treas_total);
       }
+    }
 
-      if (stats_str[0]) {
-        snprintf(state, sizeof(state), "%s | %s",
-                 GetFriendlySkillName(skill_int), stats_str);
+    // Build components array safely
+    char parts[4][96];
+    int num_parts = 0;
+
+    // Part 1: Difficulty / Mode Name
+    if (skill_name && skill_name[0]) {
+      if (clc.state == CA_ACTIVE && cl.snap.valid) {
+        Q_strncpyz(parts[num_parts++], skill_name, sizeof(parts[0]));
       } else {
-        snprintf(state, sizeof(state), "%s", GetFriendlySkillName(skill_int));
+        snprintf(parts[num_parts++], sizeof(parts[0]), "Difficulty: %s",
+                 skill_name);
       }
     } else {
-      snprintf(state, sizeof(state), "Difficulty: %s",
+      snprintf(parts[num_parts++], sizeof(parts[0]), "Difficulty: %s",
                GetFriendlySkillName(skill_int));
+    }
+
+    // Part 2: Survival Wave Counter
+    if (wave_str[0]) {
+      Q_strncpyz(parts[num_parts++], wave_str, sizeof(parts[0]));
+    }
+
+    // Part 3: Live Player Health Info
+    if (health_str[0]) {
+      Q_strncpyz(parts[num_parts++], health_str, sizeof(parts[0]));
+    }
+
+    // Part 4: Level Mission Statistics
+    if (stats_str[0]) {
+      Q_strncpyz(parts[num_parts++], stats_str, sizeof(parts[0]));
+    }
+
+    // Assembly loop
+    state[0] = '\0';
+    for (int i = 0; i < num_parts; i++) {
+      if (i > 0) {
+        Q_strcat(state, sizeof(state), " | ");
+      }
+      Q_strcat(state, sizeof(state), parts[i]);
     }
   }
 
@@ -479,8 +537,7 @@ void Discord_Init(void) {}
 void Discord_RunFrame(void) {
   qboolean changed = qfalse;
 
-  // GLOBAL MOD CHECKING: Always monitor active mod directory, even at main
-  // menu[cite: 1]
+  // GLOBAL MOD CHECKING: Always monitor active mod directory, even at main menu
   const char *fsgame_val = Cvar_VariableString("fs_game");
   if (strcmp(discord_fs_game, fsgame_val) != 0) {
     Q_strncpyz(discord_fs_game, fsgame_val, sizeof(discord_fs_game));
@@ -524,6 +581,23 @@ void Discord_RunFrame(void) {
       changed = qtrue;
     }
 
+    // CRITICAL IMPROVEMENT: Monitor real-time player data frame changes
+    if (clc.state == CA_ACTIVE && cl.snap.valid) {
+      int cur_health = cl.snap.ps.stats[STAT_HEALTH];
+      if (cur_health < 0)
+        cur_health = 0;
+      if (cur_health != discord_last_health) {
+        discord_last_health = cur_health;
+        changed = qtrue;
+      }
+
+      int cur_wave = cl.snap.ps.persistant[PERS_WAVES];
+      if (cur_wave != discord_last_wave) {
+        discord_last_wave = cur_wave;
+        changed = qtrue;
+      }
+    }
+
     if (changed) {
       discord_needs_update = 1;
     }
@@ -534,6 +608,8 @@ void Discord_RunFrame(void) {
       discord_skill[0] = '\0';
       discord_cs_message[0] = '\0';
       discord_cs_missionstats[0] = '\0';
+      discord_last_health = -1;
+      discord_last_wave = -1;
       start_time = 0;
       changed = qtrue;
     }
