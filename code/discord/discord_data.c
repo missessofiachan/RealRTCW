@@ -1,5 +1,7 @@
 #include "discord_data.h"
+#include <stddef.h>
 
+// Unified map dictionary
 const lookupTable_t CampaignMaps[] = {
     // --- Main Campaign ---
     {"intro", "Prologue"},
@@ -48,7 +50,7 @@ const lookupTable_t CampaignMaps[] = {
 
     // --- Survival Maps ---
     {"sv_barn", "Survival - Barn"},
-    {"sv_boss1", "Survival - Boss"},
+    {"sv_boss1", "Survival - Defiled Church"},
     {"sv_castle", "Survival - Castle"},
     {"sv_crypt1", "Survival - Crypt"},
     {"sv_dig", "Survival - The Dig"},
@@ -216,9 +218,9 @@ const lookupTable_t CampaignMaps[] = {
     {"sp_beach", "Beach Assault"},
 
     // --- Into the Eagle's Nest ---
-    {"antarktida", "Into the Eagle's Nest - Antarctica"},
-    {NULL, NULL}};
+    {"antarktida", "Into the Eagle's Nest - Antarctica"}};
 
+// Unified modification folder lookup table
 const lookupTable_t ModNames[] = {
     {"EE", "Cursed Sands"},
     {"karsiah", "Karsiah Raid"},
@@ -238,8 +240,12 @@ const lookupTable_t ModNames[] = {
     {"2872954732", "Into the Eagle's Nest"},
     {"3116640063", "Vendetta 3"},
     {"3289129216", "RealRTCW Remastered Textures"},
-    {"3693642344", "Enhanced Weapons: Remastered"},
-    {NULL, NULL}};
+    {"3693642344", "Enhanced Weapons: Remastered"}};
+
+// Automate count computations via memory footprint metrics
+static const size_t NumCampaignMaps =
+    sizeof(CampaignMaps) / sizeof(CampaignMaps[0]);
+static const size_t NumModNames = sizeof(ModNames) / sizeof(ModNames[0]);
 
 const char *GetFriendlyWeaponName(int weap) {
   switch (weap) {
@@ -342,7 +348,7 @@ const char *GetFriendlyWeaponName(int weap) {
   case 49:
     return "M7 grenade launcher";
   default:
-    return NULL;
+    return "Unknown Weapon"; // Safe non-NULL fallback
   }
 }
 
@@ -361,15 +367,15 @@ const char *GetFriendlySkillName(int val) {
   case 5:
     return "Survival";
   default:
-    return "Unknown";
+    return "Unknown Difficulty";
   }
 }
 
 const char *GetModDisplayName(const char *fs_game) {
   if (!fs_game || !fs_game[0] || strcasecmp(fs_game, "main") == 0)
-    return NULL;
+    return "Main Campaign"; // Avoid returning NULL or empty string markers
 
-  for (int i = 0; ModNames[i].internal_name != NULL; i++) {
+  for (size_t i = 0; i < NumModNames; i++) {
     if (strcasecmp(fs_game, ModNames[i].internal_name) == 0) {
       return ModNames[i].display_name;
     }
@@ -380,18 +386,18 @@ const char *GetModDisplayName(const char *fs_game) {
 
 const char *GetFriendlyMapName(const char *mapname) {
   if (!mapname || !mapname[0])
-    return "Unknown Map";
+    return "Main Menu";
 
-  for (int i = 0; CampaignMaps[i].internal_name != NULL; i++) {
+  for (size_t i = 0; i < NumCampaignMaps; i++) {
     if (strcasecmp(mapname, CampaignMaps[i].internal_name) == 0) {
       return CampaignMaps[i].display_name;
     }
   }
 
   if (strncasecmp(mapname, "cutscene", 8) == 0)
-    return "Cutscene";
+    return "Watching a Cutscene";
   if (strncasecmp(mapname, "day_", 4) == 0)
     return "Prologue";
 
-  return NULL;
+  return "Custom Map"; // Protected string to feed safely into Discord RPC
 }
