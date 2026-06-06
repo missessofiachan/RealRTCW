@@ -40,162 +40,7 @@ static int discord_last_weapon = -1;
 static char incoming_buf[4096];
 static int incoming_len = 0;
 
-typedef struct {
-  const char *internal_name;
-  const char *display_name;
-} lookupTable_t;
-
-// Unified map dictionary
-static const lookupTable_t CampaignMaps[] = {
-    // --- Main Campaign ---
-    {"intro", "Prologue"},
-    {"escape1", "Ominous Rumors"},
-    {"escape2", "The Escape"},
-    {"tram", "Tram Ride"},
-    {"village1", "Wulfburg"},
-    {"village2", "Ruined Village"},
-    {"crypt1", "Catacombs"},
-    {"crypt2", "Crypt"},
-    {"church", "The Defiled Church"},
-    {"boss1", "The Defiled Church (Boss)"},
-    {"forest", "Forest Compound"},
-    {"rocket", "Rocket Base"},
-    {"baseout", "Radar Installation"},
-    {"assault", "Air Base Assault"},
-    {"sfm", "Kugelstadt"},
-    {"factory", "The Ruined Factory"},
-    {"trainyard", "The Trainyards"},
-    {"swerve", "Secret Weapons Facility"},
-    {"hideout", "Ice Station Cobra"},
-    {"chateau", "Chateau"},
-    {"dark", "Dark Descent"},
-    {"dig", "The Dig"},
-    {"castle", "Return to Castle Wolfenstein"},
-    {"end", "Heinrich"},
-    {"boss2", "Heinrich (Boss)"},
-    {"dam", "X-Labs"},
-    {"cobb", "Chateau Cobb"},
-    {"keep", "Castle Keep"},
-    {"xlabs", "X-Labs"},
-    {"fendrich", "Fendrich's Office"},
-    {"norway", "Norway"},
-
-    // --- Malta Campaign ---
-    {"malta_0", "Malta - Prologue"},
-    {"malta_1", "Malta - The Citadel"},
-    {"malta_2", "Malta - Mdina"},
-    {"malta_3", "Malta - Catacombs"},
-    {"malta_4", "Malta - The Harbor"},
-    {"malta_5", "Malta - The Fortress"},
-    {"malta_menu", "Malta - Main Menu"},
-
-    // --- Survival Maps ---
-    {"sv_barn", "Survival - Barn"},
-    {"sv_boss1", "Survival - Boss"},
-    {"sv_castle", "Survival - Castle"},
-    {"sv_crypt1", "Survival - Crypt"},
-    {"sv_dig", "Survival - The Dig"},
-    {"sv_escape2", "Survival - Escape"},
-    {"sv_karsiah", "Survival - Karsiah"},
-    {"sv_kugelstadt", "Survival - Kugelstadt"},
-    {"sv_norway", "Survival - Norway"},
-    {"sv_river_outpost", "Survival - River Outpost"},
-    {"sv_safe", "Survival - Safe House"},
-
-    // --- Cursed Sands / EE Expansion ---
-    {"ee1", "Cursed Sands (Ras el-Hadid)"},
-    {"ee2", "Cursed Sands (The Excavation)"},
-    {"ee3", "Cursed Sands (The Temple)"},
-    {"ee4", "Cursed Sands (The Fortress)"},
-    {"ee5", "Cursed Sands (The Pyramid)"},
-    {"sv_ee1", "Survival - Ras el-Hadid"},
-    {"sv_ee2", "Survival - The Excavation"},
-    {"sv_ee3", "Survival - The Temple"},
-    {"sv_ee4", "Survival - The Fortress"},
-    {"sv_ee5", "Survival - The Pyramid"},
-
-    // --- Enemy Territory Single Player ---
-    {"oasis", "ET SP - Siwa Oasis"},
-    {"goldrush", "ET SP - Gold Rush"},
-    {"radar", "ET SP - Würzburg Radar"},
-    {"battery", "ET SP - Seawall Battery"},
-    {"fueldump", "ET SP - Fuel Dump"},
-    {"railgun", "ET SP - Rail Gun"},
-    {"wurzburg", "ET SP - Würzburg Radar"},
-    {"seawall", "ET SP - Seawall Battery"},
-    {"siwa", "ET SP - Siwa Oasis"},
-    {"ice", "ET SP - Ice"},
-    {"warbell", "ET SP - Warbell"},
-    {"sv_oasis", "ET SP Survival - Siwa Oasis"},
-    {"sv_goldrush", "ET SP Survival - Gold Rush"},
-    {"sv_radar", "ET SP Survival - Würzburg Radar North"},
-    {"sv_radar2", "ET SP Survival - Würzburg Radar South"},
-    {"sv_battery", "ET SP Survival - Seawall Battery"},
-    {"sv_fueldump", "ET SP Survival - Fuel Dump"},
-    {"sv_railgun", "ET SP Survival - Rail Gun"},
-
-    // --- The Dark Army: Uprising ---
-    {"dayprologue", "Dark Army - Prologue (Day)"},
-    {"daystart", "Dark Army - Prologue (Day, Cutscene)"},
-    {"dayvillage", "Dark Army - Village (Day)"},
-    {"daysewers", "Dark Army - Sewers (Day)"},
-    {"daycrypt", "Dark Army - Crypt (Day)"},
-    {"daytrack_cut", "Dark Army - Track (Day, Cutscene)"},
-    {"daytrack", "Dark Army - Track (Day)"},
-    {"daybase", "Dark Army - Base (Day)"},
-    {"dayepilogue", "Dark Army - Epilogue (Day)"},
-    {"nightprologue", "Dark Army - Prologue (Night)"},
-    {"nightstart", "Dark Army - Prologue (Night, Cutscene)"},
-    {"nightvillage", "Dark Army - Village (Night)"},
-    {"nightsewers", "Dark Army - Sewers (Night)"},
-    {"nightcrypt", "Dark Army - Crypt (Night)"},
-    {"nighttrack_cut", "Dark Army - Track (Night, Cutscene)"},
-    {"nighttrack", "Dark Army - Track (Night)"},
-    {"nightbase", "Dark Army - Base (Night)"},
-    {"nightepilogue", "Dark Army - Epilogue (Night)"},
-    {"darkprologue", "Dark Army - Prologue (Dark)"},
-    {"darkstart", "Dark Army - Prologue (Dark, Cutscene)"},
-    {"darkvillage", "Dark Army - Village (Dark)"},
-    {"darksewers", "Dark Army - Sewers (Dark)"},
-    {"darkcrypt", "Dark Army - Crypt (Dark)"},
-    {"darktrack_cut", "Dark Army - Track (Dark, Cutscene)"},
-    {"darktrack", "Dark Army - Track (Dark)"},
-    {"darkbase", "Dark Army - Base (Dark)"},
-    {"darkepilogue", "Dark Army - Epilogue (Dark)"},
-    {"realm1", "Dark Army - Realm 1"},
-    {"realm2", "Dark Army - Realm 2"},
-    {"realm3", "Dark Army - Realm 3"},
-    {"realm4", "Dark Army - Realm 4"},
-    {"realm5", "Dark Army - Realm 5"},
-    {"realm6", "Dark Army - Realm 6"},
-    {"realm7", "Dark Army - Realm 7"},
-    {"realm8", "Dark Army - Realm 8"},
-    {"realm9", "Dark Army - Realm 9"},
-    {"realm10", "Dark Army - Realm 10"},
-    {NULL, NULL}};
-
-// Unified modification folder lookup table
-static const lookupTable_t ModNames[] = {
-    {"EE", "Cursed Sands"},
-    {"karsiah", "Karsiah Raid"},
-    {"2178638114", "Beach Assault"},
-    {"2195436928", "Capuzzo"},
-    {"2223087973", "Vendetta Dilogy"},
-    {"2229917682", "Project 51"},
-    {"2230658534", "Pharaoh's Curse"},
-    {"2230721200", "Flying Saucers"},
-    {"2231522108", "Age of Horror"},
-    {"2232360724", "Stalingrad"},
-    {"2232931912", "Time Gate"},
-    {"2234651760", "Trondheim Trilogy"},
-    {"2239016506", "Devil's Manor 2: Edge of Darkness"},
-    {"2253494213", "The Dark Army: Uprising Remastered"},
-    {"2600685791", "Wolfenstein: ET Single-Player"},
-    {"2872954732", "Into the Eagle's Nest"},
-    {"3116640063", "Vendetta 3"},
-    {"3289129216", "RealRTCW Remastered Textures"},
-    {"3693642344", "Enhanced Weapons: Remastered"},
-    {NULL, NULL}};
+#include "discord_data.h"
 
 static void discord_log(const char *fmt, ...) {
   va_list args;
@@ -206,161 +51,6 @@ static void discord_log(const char *fmt, ...) {
     fclose(f);
   }
   va_end(args);
-}
-
-static const char *GetFriendlyMapName(const char *mapname) {
-  if (!mapname || !mapname[0])
-    return "Unknown Map";
-
-  for (int i = 0; CampaignMaps[i].internal_name != NULL; i++) {
-    if (strcasecmp(mapname, CampaignMaps[i].internal_name) == 0) {
-      return CampaignMaps[i].display_name;
-    }
-  }
-
-  if (strncasecmp(mapname, "cutscene", 8) == 0)
-    return "Cutscene";
-  if (strncasecmp(mapname, "day_", 4) == 0)
-    return "Prologue";
-
-  return NULL;
-}
-
-static const char *GetFriendlyWeaponName(int weap) {
-  switch (weap) {
-  case 1:
-    return "Knife"; // WP_KNIFE
-  case 2:
-    return "Luger"; // WP_LUGER
-  case 3:
-    return "Silenced Luger"; // WP_SILENCER
-  case 4:
-    return "Colt"; // WP_COLT
-  case 5:
-    return "TT-33"; // WP_TT33
-  case 6:
-    return "Revolver"; // WP_REVOLVER
-  case 7:
-    return "HDM"; // WP_HDM
-  case 8:
-    return "Dual Colts"; // WP_AKIMBO
-  case 9:
-    return "Dual TT-33"; // WP_DUAL_TT33
-  case 10:
-    return "MP40"; // WP_MP40
-  case 11:
-    return "Thompson"; // WP_THOMPSON
-  case 12:
-    return "Sten"; // WP_STEN
-  case 13:
-    return "PPSh-41"; // WP_PPSH
-  case 14:
-    return "MP34"; // WP_MP34
-  case 15:
-    return "Mauser Rifle"; // WP_MAUSER
-  case 16:
-    return "Garand"; // WP_GARAND
-  case 17:
-    return "Mosin-Nagant"; // WP_MOSIN
-  case 18:
-    return "De Lisle"; // WP_DELISLE
-  case 19:
-    return "M1 Garand"; // WP_M1GARAND
-  case 20:
-    return "Gewehr 43"; // WP_G43
-  case 21:
-    return "M1941 Johnson"; // WP_M1941
-  case 22:
-    return "StG 44"; // WP_MP44
-  case 23:
-    return "FG42"; // WP_FG42
-  case 24:
-    return "BAR"; // WP_BAR
-  case 25:
-    return "M97 Trench"; // WP_M97
-  case 26:
-    return "Auto-5"; // WP_AUTO5
-  case 27:
-    return "M30 Drilling"; // WP_M30
-  case 28:
-    return "Browning M1919"; // WP_BROWNING
-  case 29:
-    return "MG42"; // WP_MG42M
-  case 30:
-    return "Panzerfaust"; // WP_PANZERFAUST
-  case 31:
-    return "Flamethrower"; // WP_FLAMETHROWER
-  case 32:
-    return "Venom Gun"; // WP_VENOM
-  case 33:
-    return "Tesla Gun"; // WP_TESLA
-  case 34:
-    return "Grenade launcher"; // WP_GRENADE_LAUNCHER
-  case 35:
-    return "Pineapple grenade"; // WP_GRENADE_PINEAPPLE
-  case 36:
-    return "Dynamite"; // WP_DYNAMITE
-  case 37:
-    return "Dynamite"; // WP_DYNAMITE_ENG
-  case 38:
-    return "Airstrike"; // WP_AIRSTRIKE
-  case 39:
-    return "Artillery"; // WP_ARTY
-  case 40:
-    return "Poison Gas"; // WP_POISONGAS
-  case 41:
-    return "Smoke canister"; // WP_SMOKETRAIL
-  case 42:
-    return "Holy Cross"; // WP_HOLYCROSS
-  case 43:
-    return "Smoke Bomb"; // WP_SMOKE_BOMB
-  case 44:
-    return "Scoped Mauser"; // WP_SNIPERRIFLE
-  case 45:
-    return "Snooper Rifle"; // WP_SNOOPERSCOPE
-  case 46:
-    return "Scoped De Lisle"; // WP_DELISLESCOPE
-  case 47:
-    return "Scoped M1941"; // WP_M1941SCOPE
-  case 48:
-    return "Scoped FG42"; // WP_FG42SCOPE
-  case 49:
-    return "M7 grenade launcher"; // WP_M7
-  default:
-    return NULL;
-  }
-}
-
-static const char *GetModDisplayName(const char *fs_game) {
-  if (!fs_game || !fs_game[0] || strcasecmp(fs_game, "main") == 0)
-    return NULL;
-
-  for (int i = 0; ModNames[i].internal_name != NULL; i++) {
-    if (strcasecmp(fs_game, ModNames[i].internal_name) == 0) {
-      return ModNames[i].display_name;
-    }
-  }
-
-  return fs_game;
-}
-
-static const char *GetFriendlySkillName(int val) {
-  switch (val) {
-  case 0:
-    return "Can I play, Daddy?";
-  case 1:
-    return "Don't hurt me.";
-  case 2:
-    return "Bring 'em on!";
-  case 3:
-    return "I am Death incarnate!";
-  case 4:
-    return "Realism";
-  case 5:
-    return "Survival";
-  default:
-    return "Unknown";
-  }
 }
 
 static void ExtractMapBaseName(const char *in, char *out, int maxlen) {
@@ -583,8 +273,10 @@ static void Discord_Update(void) {
     // --- Dynamic Multi-Part State Builder ---
     int skill_int = atoi(discord_skill);
     const char *skill_name = GetFriendlySkillName(skill_int);
+    qboolean is_survival =
+        (Cvar_VariableIntegerValue("g_gametype") == 3); // GT_SURVIVAL = 3
 
-    char health_str[32] = "";
+    char health_str[96] = "";
     if (clc.state == CA_ACTIVE && cl.snap.valid) {
       int health = cl.snap.ps.stats[STAT_HEALTH];
       if (health < 0)
@@ -596,8 +288,6 @@ static void Discord_Update(void) {
     }
 
     char wave_str[64] = "";
-    qboolean is_survival =
-        (Cvar_VariableIntegerValue("g_gametype") == 3); // GT_SURVIVAL = 3
     if (is_survival && clc.state == CA_ACTIVE && cl.snap.valid) {
       int wave = cl.snap.ps.persistant[PERS_WAVES];
       int kills = cl.snap.ps.persistant[PERS_KILLS];
@@ -634,7 +324,7 @@ static void Discord_Update(void) {
       int active_weap = cl.snap.ps.weapon;
       const char *weap_name = GetFriendlyWeaponName(active_weap);
       if (weap_name) {
-        snprintf(weap_str, sizeof(weap_str), " %s", weap_name);
+        snprintf(weap_str, sizeof(weap_str), "%s", weap_name);
       }
     }
 
