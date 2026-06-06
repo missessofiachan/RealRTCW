@@ -32,6 +32,8 @@ static time_t start_time = 0;
 // Dynamic state-tracking variables to prevent redundant parsing/spamming
 static int discord_last_health = -1;
 static int discord_last_wave = -1;
+static int discord_last_kills = -1;
+static int discord_last_score = -1;
 
 // Persistent stream framing buffers
 static char incoming_buf[4096];
@@ -105,6 +107,69 @@ static const lookupTable_t CampaignMaps[] = {
     {"ee3", "Cursed Sands (The Temple)"},
     {"ee4", "Cursed Sands (The Fortress)"},
     {"ee5", "Cursed Sands (The Pyramid)"},
+    {"sv_ee1", "Survival - Ras el-Hadid"},
+    {"sv_ee2", "Survival - The Excavation"},
+    {"sv_ee3", "Survival - The Temple"},
+    {"sv_ee4", "Survival - The Fortress"},
+    {"sv_ee5", "Survival - The Pyramid"},
+
+    // --- Enemy Territory Single Player ---
+    {"oasis", "ET SP - Siwa Oasis"},
+    {"goldrush", "ET SP - Gold Rush"},
+    {"radar", "ET SP - Würzburg Radar"},
+    {"battery", "ET SP - Seawall Battery"},
+    {"fueldump", "ET SP - Fuel Dump"},
+    {"railgun", "ET SP - Rail Gun"},
+    {"wurzburg", "ET SP - Würzburg Radar"},
+    {"seawall", "ET SP - Seawall Battery"},
+    {"siwa", "ET SP - Siwa Oasis"},
+    {"ice", "ET SP - Ice"},
+    {"warbell", "ET SP - Warbell"},
+    {"sv_oasis", "Survival - Siwa Oasis"},
+    {"sv_goldrush", "Survival - Gold Rush"},
+    {"sv_radar", "Survival - Würzburg Radar"},
+    {"sv_battery", "Survival - Seawall Battery"},
+    {"sv_fueldump", "Survival - Fuel Dump"},
+    {"sv_railgun", "Survival - Rail Gun"},
+
+    // --- The Dark Army: Uprising ---
+    {"dayprologue", "Dark Army - Prologue (Day)"},
+    {"daystart", "Dark Army - Prologue (Day, Cutscene)"},
+    {"dayvillage", "Dark Army - Village (Day)"},
+    {"daysewers", "Dark Army - Sewers (Day)"},
+    {"daycrypt", "Dark Army - Crypt (Day)"},
+    {"daytrack_cut", "Dark Army - Track (Day, Cutscene)"},
+    {"daytrack", "Dark Army - Track (Day)"},
+    {"daybase", "Dark Army - Base (Day)"},
+    {"dayepilogue", "Dark Army - Epilogue (Day)"},
+    {"nightprologue", "Dark Army - Prologue (Night)"},
+    {"nightstart", "Dark Army - Prologue (Night, Cutscene)"},
+    {"nightvillage", "Dark Army - Village (Night)"},
+    {"nightsewers", "Dark Army - Sewers (Night)"},
+    {"nightcrypt", "Dark Army - Crypt (Night)"},
+    {"nighttrack_cut", "Dark Army - Track (Night, Cutscene)"},
+    {"nighttrack", "Dark Army - Track (Night)"},
+    {"nightbase", "Dark Army - Base (Night)"},
+    {"nightepilogue", "Dark Army - Epilogue (Night)"},
+    {"darkprologue", "Dark Army - Prologue (Dark)"},
+    {"darkstart", "Dark Army - Prologue (Dark, Cutscene)"},
+    {"darkvillage", "Dark Army - Village (Dark)"},
+    {"darksewers", "Dark Army - Sewers (Dark)"},
+    {"darkcrypt", "Dark Army - Crypt (Dark)"},
+    {"darktrack_cut", "Dark Army - Track (Dark, Cutscene)"},
+    {"darktrack", "Dark Army - Track (Dark)"},
+    {"darkbase", "Dark Army - Base (Dark)"},
+    {"darkepilogue", "Dark Army - Epilogue (Dark)"},
+    {"realm1", "Dark Army - Realm 1"},
+    {"realm2", "Dark Army - Realm 2"},
+    {"realm3", "Dark Army - Realm 3"},
+    {"realm4", "Dark Army - Realm 4"},
+    {"realm5", "Dark Army - Realm 5"},
+    {"realm6", "Dark Army - Realm 6"},
+    {"realm7", "Dark Army - Realm 7"},
+    {"realm8", "Dark Army - Realm 8"},
+    {"realm9", "Dark Army - Realm 9"},
+    {"realm10", "Dark Army - Realm 10"},
     {NULL, NULL}};
 
 // Unified modification folder lookup table
@@ -423,12 +488,15 @@ static void Discord_Update(void) {
       snprintf(health_str, sizeof(health_str), "❤️ %d/%d", health, max_health);
     }
 
-    char wave_str[32] = "";
+    char wave_str[64] = "";
     qboolean is_survival =
         (Cvar_VariableIntegerValue("g_gametype") == 3); // GT_SURVIVAL = 3
     if (is_survival && clc.state == CA_ACTIVE && cl.snap.valid) {
       int wave = cl.snap.ps.persistant[PERS_WAVES];
-      snprintf(wave_str, sizeof(wave_str), "Wave %d", wave);
+      int kills = cl.snap.ps.persistant[PERS_KILLS];
+      int points = cl.snap.ps.persistant[PERS_SCORE];
+      snprintf(wave_str, sizeof(wave_str), "Wave %d | ☠️ %d | ✪ %d", wave, kills,
+               points);
     }
 
     char stats_str[96] = "";
@@ -596,6 +664,18 @@ void Discord_RunFrame(void) {
         discord_last_wave = cur_wave;
         changed = qtrue;
       }
+
+      int cur_kills = cl.snap.ps.persistant[PERS_KILLS];
+      if (cur_kills != discord_last_kills) {
+        discord_last_kills = cur_kills;
+        changed = qtrue;
+      }
+
+      int cur_score = cl.snap.ps.persistant[PERS_SCORE];
+      if (cur_score != discord_last_score) {
+        discord_last_score = cur_score;
+        changed = qtrue;
+      }
     }
 
     if (changed) {
@@ -610,6 +690,8 @@ void Discord_RunFrame(void) {
       discord_cs_missionstats[0] = '\0';
       discord_last_health = -1;
       discord_last_wave = -1;
+      discord_last_kills = -1;
+      discord_last_score = -1;
       start_time = 0;
       changed = qtrue;
     }
