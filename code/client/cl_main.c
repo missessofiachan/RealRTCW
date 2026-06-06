@@ -29,6 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 // cl_main.c  -- client main loop
 
 #include "client.h"
+#include "../discord/discord_rpc.h"
 #include <limits.h>
 
 #include "../sys/sys_local.h"
@@ -3100,6 +3101,8 @@ void CL_Frame( int msec ) {
 
 	Con_RunConsole();
 
+	Discord_RunFrame();
+
 	cls.framecount++;
 }
 
@@ -3671,6 +3674,7 @@ void CL_Init( void ) {
 	Com_Printf( "----- Client Initialization -----\n" );
 
 	Con_Init();
+	Discord_Init();
 
 	if(!com_fullyInitialized)
 	{
@@ -3951,6 +3955,8 @@ CL_Shutdown
 */
 void CL_Shutdown( char *finalmsg, qboolean disconnect, qboolean quit ) {
 	static qboolean recursive = qfalse;
+
+	Discord_Shutdown();
 
 	// check whether the client is running at all.
 	if(!(com_cl_running && com_cl_running->integer))

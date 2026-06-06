@@ -1930,6 +1930,7 @@ Q3OBJ = \
   $(B)/client/cl_scrn.o \
   $(B)/client/cl_ui.o \
   $(B)/client/cl_avi.o \
+  $(B)/client/discord_rpc.o \
   \
   $(B)/client/cm_load.o \
   $(B)/client/cm_patch.o \
@@ -2800,6 +2801,9 @@ $(B)/$(BASEGAME)/game/%.o: $(STEAMSHIMDIR)/%.c
 
 $(B)/$(BASEGAME)/game/%.o: $(STEAMDIR)/%.c
 	$(DO_GAME_CC)
+
+$(B)/client/%.o: $(MOUNT_DIR)/discord/%.c
+	$(DO_CC)
 
 #############################################################################
 ## CLIENT/SERVER RULES

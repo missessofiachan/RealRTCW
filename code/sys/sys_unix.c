@@ -152,6 +152,30 @@ Sys_SteamWorkshopPath
 */
 char *Sys_SteamWorkshopPath( void )
 {
+	static qboolean found = qfalse;
+	if (!found) {
+		char *cwd = Sys_Cwd();
+		if (cwd) {
+			// Find steamapps in the path
+			char *p = strstr(cwd, "/steamapps/common");
+			if (p) {
+				int len = p - cwd;
+				strncpy(realsteamPath, cwd, len);
+				realsteamPath[len] = '\0';
+				strcat(realsteamPath, "/steamapps/workshop/content/" STEAMPATH_REALAPPID);
+			} else {
+				// Alternative Steam path
+				p = strstr(cwd, "/SteamApps/common");
+				if (p) {
+					int len = p - cwd;
+					strncpy(realsteamPath, cwd, len);
+					realsteamPath[len] = '\0';
+					strcat(realsteamPath, "/SteamApps/workshop/content/" STEAMPATH_REALAPPID);
+				}
+			}
+		}
+		found = qtrue;
+	}
 	return realsteamPath;
 }
 
