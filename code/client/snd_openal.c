@@ -2166,20 +2166,45 @@ static void S_AL_CalculateDiffractionHF( const vec3_t listenerPos, const vec3_t 
 		return;
 	}
 
+	// Query collision surface flags to derive material acoustic absorption profile
+	float matGain = 0.60f;
+	float matGainHF = 0.20f;
+
+	if (tr.surfaceFlags & SURF_GLASS) {
+		matGain = 0.92f;
+		matGainHF = 0.85f;
+	} else if (tr.surfaceFlags & SURF_WOOD) {
+		matGain = 0.88f;
+		matGainHF = 0.70f;
+	} else if (tr.surfaceFlags & (SURF_CARPET | SURF_SNOW | SURF_GRASS)) {
+		matGain = 0.82f;
+		matGainHF = 0.50f;
+	} else if (tr.surfaceFlags & SURF_METAL) {
+		matGain = 0.65f;
+		matGainHF = 0.25f;
+	} else if (tr.surfaceFlags & (SURF_CERAMIC | SURF_ROOF | SURF_RUBBLE | SURF_GRAVEL)) {
+		matGain = 0.70f;
+		matGainHF = 0.35f;
+	} else {
+		// Default masonry / concrete / stone wall
+		matGain = 0.60f;
+		matGainHF = 0.20f;
+	}
+
 	int listenerLeaf = CM_PointLeafnum(listenerPos);
 	int listenerArea = CM_LeafArea(listenerLeaf);
 	int sourceLeaf = CM_PointLeafnum(sourcePos);
 	int sourceArea = CM_LeafArea(sourceLeaf);
 
-	float gain = 0.85f;
-	float gainHF = 0.40f;
+	float gain = matGain;
+	float gainHF = matGainHF;
 
 	if (listenerArea != sourceArea && listenerArea > 0 && sourceArea > 0) {
 		int pathLen = CM_GetAreaPathLength(sourceArea, listenerArea);
 		if (pathLen < 0) {
 			// Fully blocked by closed doors or non-connected areas
-			*outGain = 0.50f;
-			*outGainHF = 0.05f;
+			*outGain = matGain * 0.75f;
+			*outGainHF = matGainHF * 0.25f;
 			return;
 		} else if (pathLen == 0) {
 			// Direct area connection (doorway / portal opening)
@@ -2199,14 +2224,14 @@ static void S_AL_CalculateDiffractionHF( const vec3_t listenerPos, const vec3_t 
 			float cosHalf = cosf(theta * 0.5f);
 			float diffScale = cosHalf * cosHalf; // cos^2(theta / 2)
 
-			gainHF = 0.30f + 0.55f * diffScale;
-			gain = 0.75f + 0.15f * diffScale;
+			gainHF = matGainHF + (1.0f - matGainHF) * 0.65f * diffScale;
+			gain = matGain + (1.0f - matGain) * 0.40f * diffScale;
 		} else {
 			// Multi-area corridor pathing
-			gainHF = 0.8f * powf(0.65f, (float)pathLen);
-			if (gainHF < 0.10f) gainHF = 0.10f;
-			gain = 0.8f * powf(0.85f, (float)pathLen);
-			if (gain < 0.35f) gain = 0.35f;
+			gainHF = matGainHF * powf(0.65f, (float)pathLen);
+			if (gainHF < 0.05f) gainHF = 0.05f;
+			gain = matGain * powf(0.85f, (float)pathLen);
+			if (gain < 0.25f) gain = 0.25f;
 		}
 	} else {
 		// Same room, direct obstacle obstruction (e.g. pillar or corner wall)
@@ -2225,9 +2250,12 @@ static void S_AL_CalculateDiffractionHF( const vec3_t listenerPos, const vec3_t 
 		float cosHalf = cosf(theta * 0.5f);
 		float diffScale = cosHalf * cosHalf;
 
-		gainHF = 0.25f + 0.50f * diffScale;
-		gain = 0.80f + 0.10f * diffScale;
+		gainHF = matGainHF + (1.0f - matGainHF) * 0.50f * diffScale;
+		gain = matGain + (1.0f - matGain) * 0.30f * diffScale;
 	}
+
+	*outGain = gain;
+	*outGainHF = gainHF;
 
 	*outGain = gain;
 	*outGainHF = gainHF;
