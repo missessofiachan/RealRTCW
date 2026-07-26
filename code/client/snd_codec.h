@@ -80,7 +80,9 @@ snd_stream_t *S_CodecUtilOpen(const char *filename, snd_codec_t *codec);
 void S_CodecUtilClose(snd_stream_t **stream);
 void *S_CodecAllocateTemp(int size);
 void S_CodecFreeTemp(void *ptr);
+void *S_CodecResample(snd_info_t *info, void *data, int targetRate);
 extern __thread qboolean g_asyncLoadActive;
+extern cvar_t *s_resampleRate;
 
 // WAV Codec
 extern snd_codec_t wav_codec;

@@ -159,12 +159,94 @@ void S_CodecRegister(snd_codec_t *codec)
 
 /*
 =================
+S_CodecResample
+
+Resamples 16-bit PCM (mono or stereo) audio from info->rate to targetRate
+using 4-point cubic Hermite spline interpolation.
+Returns a newly allocated buffer via S_CodecAllocateTemp(), updates info,
+and frees the input data buffer via S_CodecFreeTemp().
+=================
+*/
+void *S_CodecResample(snd_info_t *info, void *data, int targetRate)
+{
+	if (!info || !data || targetRate <= 0 || info->rate <= 0 || info->rate == targetRate) {
+		return data;
+	}
+	if (info->width != 2) {
+		return data;
+	}
+
+	int channels = info->channels;
+	if (channels < 1 || channels > 2) {
+		return data;
+	}
+
+	int inSamples = info->samples;
+	double ratio = (double)targetRate / (double)info->rate;
+	int outSamples = (int)(inSamples * ratio + 0.5);
+	if (outSamples <= 0) {
+		return data;
+	}
+
+	int outSize = outSamples * channels * sizeof(short);
+	short *outBuf = (short *)S_CodecAllocateTemp(outSize);
+	if (!outBuf) {
+		return data;
+	}
+
+	const short *inBuf = (const short *)data;
+
+	for (int i = 0; i < outSamples; i++) {
+		double inPos = (double)i / ratio;
+		int idx = (int)inPos;
+		double frac = inPos - idx;
+
+		for (int ch = 0; ch < channels; ch++) {
+			int i0 = idx - 1; if (i0 < 0) i0 = 0;
+			int i1 = idx;     if (i1 >= inSamples) i1 = inSamples - 1;
+			int i2 = idx + 1; if (i2 >= inSamples) i2 = inSamples - 1;
+			int i3 = idx + 2; if (i3 >= inSamples) i3 = inSamples - 1;
+
+			double y0 = (double)inBuf[i0 * channels + ch];
+			double y1 = (double)inBuf[i1 * channels + ch];
+			double y2 = (double)inBuf[i2 * channels + ch];
+			double y3 = (double)inBuf[i3 * channels + ch];
+
+			// 4-point cubic Hermite spline
+			double c0 = y1;
+			double c1 = 0.5 * (y2 - y0);
+			double c2 = y0 - 2.5 * y1 + 2.0 * y2 - 0.5 * y3;
+			double c3 = 0.5 * (y3 - y0) + 1.5 * (y1 - y2);
+
+			double sample = ((c3 * frac + c2) * frac + c1) * frac + c0;
+
+			if (sample > 32767.0) sample = 32767.0;
+			if (sample < -32768.0) sample = -32768.0;
+
+			outBuf[i * channels + ch] = (short)sample;
+		}
+	}
+
+	info->rate = targetRate;
+	info->samples = outSamples;
+	info->size = outSize;
+
+	S_CodecFreeTemp(data);
+	return outBuf;
+}
+
+/*
+=================
 S_CodecLoad
 =================
 */
 void *S_CodecLoad(const char *filename, snd_info_t *info)
 {
-	return S_CodecGetSound(filename, info);
+	void *data = S_CodecGetSound(filename, info);
+	if (data && info && s_resampleRate && s_resampleRate->integer > 0 && info->rate < s_resampleRate->integer) {
+		data = S_CodecResample(info, data, s_resampleRate->integer);
+	}
+	return data;
 }
 
 /*

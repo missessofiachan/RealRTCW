@@ -33,6 +33,7 @@ cvar_t *s_doppler;
 cvar_t *s_backend;
 cvar_t *s_muteWhenMinimized;
 cvar_t *s_muteWhenUnfocused;
+cvar_t *s_resampleRate;
 
 static soundInterface_t si;
 
@@ -644,6 +645,7 @@ void S_Init( void )
 	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
 	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
 	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
+	s_resampleRate = Cvar_Get( "s_resampleRate", "48000", CVAR_ARCHIVE );
 
 	cv = Cvar_Get( "s_initsound", "1", 0 );
 	if( !cv->integer ) {

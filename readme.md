@@ -51,6 +51,7 @@ This repository is a modernized, high-performance fork of the **Return to Castle
 
 ### 🔊 Dynamic Spatial Audio & Environmental Reverb (OpenAL EFX / EAX)
 
+* **High-Frequency Audio Resampling & Sample Rate Normalization**: Integrates a 4-point cubic Hermite spline interpolator (`S_CodecResample`) into the asset loading pipeline (`snd_codec.c`). Automatically upscales legacy 11.025kHz and 22.05kHz audio clips to match 48kHz output targets (`s_resampleRate`), eliminating metallic aliasing and temporal distortion on modern DACs without runtime playback CPU overhead.
 * **Dynamic Ray-Traced Reverb**: Casts geometric rays into the map to calculate room volume, outdoor exposure, and structural boundaries to dynamically adjust OpenAL EFX reverb parameters on the fly.
 * **OpenAL EFX Occlusion**: Applies low-pass filters to sound sources when line-of-sight is blocked, realistically simulating acoustic muffling behind walls, doors, or solid geometry.
 * **HRTF Support**: Exposes full Head-Related Transfer Function configurations directly in the UI, delivering precise binaural 3D spatial audio on headphones.
