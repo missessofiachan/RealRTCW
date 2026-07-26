@@ -252,6 +252,8 @@ typedef enum {
 	G_SYS_QUEUEJOB,
 	G_SYS_WAITJOBS,
 
+	G_GET_LIGHT_AT_POINT,
+
 	BOTLIB_SETUP = 200,             // ( void );
 	BOTLIB_SHUTDOWN,                // ( void );
 	BOTLIB_LIBVAR_SET,

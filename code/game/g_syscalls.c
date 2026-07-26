@@ -246,6 +246,10 @@ void trap_SnapVector( float *v ) {
 	syscall( G_SNAPVECTOR, v );
 }
 
+qboolean trap_GetLightAtPoint( const vec3_t point, vec3_t ambientLight, vec3_t directedLight ) {
+	return syscall( G_GET_LIGHT_AT_POINT, point, ambientLight, directedLight );
+}
+
 qboolean trap_GetTag( int clientNum, char *tagName, orientation_t *or ) {
 	return syscall( G_GETTAG, clientNum, tagName, or );
 }

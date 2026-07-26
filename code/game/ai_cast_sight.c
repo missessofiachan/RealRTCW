@@ -325,6 +325,32 @@ qboolean AICast_CheckVisibility( gentity_t *srcent, gentity_t *destent ) {
 				maxDist = 250.0f;
 			}
 		}
+	} else if ( g_stealthShadows.integer && destent->client && cs->aiState < AISTATE_COMBAT ) {
+		vec3_t amb, dirLight;
+		if ( trap_GetLightAtPoint( destent->client->ps.origin, amb, dirLight ) ) {
+			float maxComp = amb[0];
+			if ( amb[1] > maxComp ) maxComp = amb[1];
+			if ( amb[2] > maxComp ) maxComp = amb[2];
+			if ( dirLight[0] > maxComp ) maxComp = dirLight[0];
+			if ( dirLight[1] > maxComp ) maxComp = dirLight[1];
+			if ( dirLight[2] > maxComp ) maxComp = dirLight[2];
+
+			float lightFactor = maxComp / 255.0f;
+			if ( lightFactor > 1.0f ) lightFactor = 1.0f;
+
+			// In shadows (brightness < 35%): reduce detection range
+			if ( lightFactor < 0.35f ) {
+				float shadowScale = 0.30f + 0.70f * ( lightFactor / 0.35f );
+				if ( destent->client->ps.pm_flags & PMF_DUCKED ) {
+					shadowScale *= 0.80f; // extra benefit for crouching in shadows
+				}
+				if ( shadowScale < 0.25f ) {
+					shadowScale = 0.25f;
+				}
+				maxDist *= shadowScale;
+			}
+			// Out of shadows (brightness >= 35%): vanilla maxDist remains 100% unchanged
+		}
 	} else if ( !fov ) { // assume it's a player, give them a generic fov
 		fov = 180;
 	}

@@ -1290,6 +1290,7 @@ extern vmCvar_t g_specialWaves;
 extern vmCvar_t g_survivalAiHealthCap;
 extern vmCvar_t g_bulletProjectiles;
 extern vmCvar_t g_bulletGravity;
+extern vmCvar_t g_stealthShadows;
 
 void	trap_Print( const char *text );
 void	trap_Error( const char *text ) __attribute__((noreturn));
@@ -1341,6 +1342,7 @@ qboolean trap_GetTag( int clientNum, char *tagName, orientation_t * or );
 
 void    trap_Sys_QueueJob( void (*work)(void*), void *arg );
 void    trap_Sys_WaitJobs( void );
+qboolean trap_GetLightAtPoint( const vec3_t point, vec3_t ambientLight, vec3_t directedLight );
 
 int     trap_DebugPolygonCreate( int color, int numPoints, vec3_t *points );
 void    trap_DebugPolygonDelete( int id );

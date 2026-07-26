@@ -386,6 +386,16 @@ intptr_t SV_GameSystemCalls( intptr_t *args ) {
 	case G_SYS_WAITJOBS:
 		Sys_WaitJobs();
 		return 0;
+	case G_GET_LIGHT_AT_POINT:
+		{
+			#include "../renderer/tr_public.h"
+			extern refexport_t re;
+			vec3_t dummyDir;
+			if ( re.LightForPoint ) {
+				return re.LightForPoint( (float *)VMA(1), (float *)VMA(2), (float *)VMA(3), dummyDir );
+			}
+			return qfalse;
+		}
 	case G_POINT_CONTENTS:
 		return SV_PointContents( VMA( 1 ), args[2] );
 	case G_SET_BRUSH_MODEL:
