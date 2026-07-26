@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "client.h"
 #include "snd_codec.h"
+#include <SDL3/SDL.h>
 
 static snd_codec_t *codecs;
 
@@ -189,8 +190,8 @@ void *S_CodecResample(snd_info_t *info, void *data, int targetRate)
 	}
 
 	int outSize = outSamples * channels * sizeof(short);
-	short *outBuf = (short *)S_CodecAllocateTemp(outSize);
-	if (!outBuf) {
+	short *resampledData = (short *)SDL_malloc(outSize);
+	if (!resampledData) {
 		return data;
 	}
 
@@ -223,15 +224,30 @@ void *S_CodecResample(snd_info_t *info, void *data, int targetRate)
 			if (sample > 32767.0) sample = 32767.0;
 			if (sample < -32768.0) sample = -32768.0;
 
-			outBuf[i * channels + ch] = (short)sample;
+			resampledData[i * channels + ch] = (short)sample;
 		}
+	}
+
+	// Free input data FIRST while it is still on top of the Hunk stack (LIFO order)
+	S_CodecFreeTemp(data);
+
+	// Now allocate final output buffer on the Hunk stack
+	short *outBuf = (short *)S_CodecAllocateTemp(outSize);
+	if (outBuf) {
+		memcpy(outBuf, resampledData, outSize);
+	} else {
+		outBuf = resampledData; // fallback
+		resampledData = NULL;
+	}
+
+	if (resampledData) {
+		SDL_free(resampledData);
 	}
 
 	info->rate = targetRate;
 	info->samples = outSamples;
 	info->size = outSize;
 
-	S_CodecFreeTemp(data);
 	return outBuf;
 }
 
