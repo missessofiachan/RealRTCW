@@ -113,6 +113,8 @@ vmCvar_t cg_bobpitch;
 vmCvar_t cg_bobroll;
 vmCvar_t cg_swingSpeed;
 vmCvar_t cg_shadows;
+vmCvar_t cg_playerShadows;
+vmCvar_t cg_enemyShadows;
 vmCvar_t cg_gibs;
 vmCvar_t cg_drawTimer;
 vmCvar_t cg_drawFPS;
@@ -373,6 +375,8 @@ cvarTable_t cvarTable[] = {
 	{&cg_viewsize, "cg_viewsize", "100", CVAR_ARCHIVE},
 	{&cg_letterbox, "cg_letterbox", "0", CVAR_TEMP}, //----(SA)	added
 	{&cg_shadows, "cg_shadows", "1", CVAR_ARCHIVE},
+	{&cg_playerShadows, "cg_playerShadows", "-1", CVAR_ARCHIVE},
+	{&cg_enemyShadows, "cg_enemyShadows", "-1", CVAR_ARCHIVE},
 	{&cg_gibs, "cg_gibs", "1", CVAR_ARCHIVE},
 	{&cg_draw2D, "cg_draw2D", "1", CVAR_ARCHIVE},
 	{&cg_drawSubtitles, "cg_drawSubtitles", "0", CVAR_ARCHIVE},

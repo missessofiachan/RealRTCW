@@ -407,26 +407,6 @@ open in_vid_restart_popmenu ; hide graphics ; hide graphicsapply ; hide iortcwgr
    		name iortcwgraphics
 		group grpsystem
     	type ITEM_TYPE_MULTI
-		text "Shadow Quality:"
-		cvar "cg_shadows"
-		cvarFloatList { "Off (Low)" 0 "Simple Blobs (Med)" 1 "Planar (High)" 3 "Stencil Volume (Ultra)" 2 }
-		rect 82 95 290 12
-      	textalign ITEM_ALIGN_RIGHT
-		textfont UI_FONT_BIG
-      	textalignx 142
-      	textaligny 10
-		textscale .22 
-		style WINDOW_STYLE_FILLED
-		backcolor 1 1 1 .07       
-      	forecolor 1 1 1 1
-      	visible 0 
-		action { uiScript glCustom }
-	}
-
-	itemDef {
-   		name iortcwgraphics
-		group grpsystem
-    	type ITEM_TYPE_MULTI
 		text "@SYSTEM_GEODETAIL"
 		cvar "r_lodbias"
 		cvarFloatList { "@SYSTEM_VERYLOWGEO" 2 "@SYSTEM_LOWGEO" 1 "@SYSTEM_MEDIUMGEO" 0 "@SYSTEM_HIGHGEO" -1 "@SYSTEM_VERYHIGHGEO" -2   }
@@ -849,6 +829,63 @@ open in_vid_restart_popmenu ; hide graphics ; hide graphicsapply ; hide iortcwgr
 		forecolor 1 1 1 1
 		visible 0 
 	}
+
+	itemDef {
+   		name performancegraphics
+		group grpsystem
+    	type ITEM_TYPE_MULTI
+		text "Global Shadows:"
+		cvar "cg_shadows"
+		cvarFloatList { "Off" 0 "Blob" 1 "Planar" 3 "Stencil" 2 }
+		rect 82 190 290 12
+      	textalign ITEM_ALIGN_RIGHT
+		textfont UI_FONT_BIG
+      	textalignx 142
+      	textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+      	forecolor 1 1 1 1
+      	visible 0 
+	}
+
+	itemDef {
+   		name performancegraphics
+		group grpsystem
+    	type ITEM_TYPE_MULTI
+		text "Player Shadow:"
+		cvar "cg_playerShadows"
+		cvarFloatList { "Use Global" -1 "Off" 0 "Blob" 1 "Planar" 3 "Stencil" 2 }
+		rect 82 205 290 12
+      	textalign ITEM_ALIGN_RIGHT
+		textfont UI_FONT_BIG
+      	textalignx 142
+      	textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+      	forecolor 1 1 1 1
+      	visible 0 
+	}
+
+	itemDef {
+   		name performancegraphics
+		group grpsystem
+    	type ITEM_TYPE_MULTI
+		text "Enemy Shadow:"
+		cvar "cg_enemyShadows"
+		cvarFloatList { "Use Global" -1 "Off" 0 "Blob" 1 "Planar" 3 "Stencil" 2 }
+		rect 82 220 290 12
+      	textalign ITEM_ALIGN_RIGHT
+		textfont UI_FONT_BIG
+      	textalignx 142
+      	textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+      	forecolor 1 1 1 1
+      	visible 0 
+	}
 	
 
 	
@@ -877,17 +914,36 @@ open in_vid_restart_popmenu ; hide graphics ; hide graphicsapply ; hide iortcwgr
 		type 1
 		textscale .23
 		group grpControlbutton
-		rect 350 10 80 12
+		rect 340 10 50 12
 		textalign 1
-		textalignx 40
+		textalignx 25
 		textfont UI_FONT_BIG
 		textaligny 10
 		forecolor 1 1 1 1
 		backcolor .1 .1 .1 0 
 		visible 1
-		action { hide grpSystem ; show sofiasettings }
+		action { hide grpSystem ; hide sofiasettings2 ; show sofiasettings }
 		mouseEnter { setitemcolor ctr_sofia backcolor .1 .37 .1 1 }
 		mouseExit { setitemcolor ctr_sofia backcolor .37 .1 .1 1 }
+	}
+
+	itemDef {
+		name ctr_sofia2
+		text "SOFIA 2"
+		type 1
+		textscale .23
+		group grpControlbutton
+		rect 395 10 60 12
+		textalign 1
+		textalignx 30
+		textfont UI_FONT_BIG
+		textaligny 10
+		forecolor 1 1 1 1
+		backcolor .1 .1 .1 0 
+		visible 1
+		action { hide grpSystem ; hide sofiasettings ; show sofiasettings2 }
+		mouseEnter { setitemcolor ctr_sofia2 backcolor .1 .37 .1 1 }
+		mouseExit { setitemcolor ctr_sofia2 backcolor .37 .1 .1 1 }
 	}
 	
 		 itemDef {
@@ -1498,7 +1554,7 @@ open in_snd_restart_popmenu ; hide sound ; hide sofiasettings ; hide applysystem
 	}
 
 	itemDef {
-		name sofiasettings
+		name sofiasettings2
 		textfont UI_FONT_BIG
 		group grpsystem
 		cvar "ui_sofia_desc"
@@ -1512,10 +1568,121 @@ open in_snd_restart_popmenu ; hide sound ; hide sofiasettings ; hide applysystem
 		decoration
 	}
 
+	itemDef {
+	    name sofiasettings2
+		group grpsystem
+	    text "SOFIA 2 ADVANCED SETTINGS"
+	    textscale .25
+		decoration
+	    style WINDOW_STYLE_FILLED
+	    rect 190 25 290 12
+	    textalign 1
+		textfont UI_FONT_BIG
+	    textalignx 22
+	    textaligny 14
+	    border 1
+	    forecolor 1 1 1 1
+	    visible 0
+	}
 
+	itemDef {
+	    name sofiasettings2
+		group grpsystem
+	    text "PHYSICS & GAMEPLAY MODIFIERS"
+	    textscale .22
+		decoration
+	    style WINDOW_STYLE_FILLED
+	    rect 190 45 290 12
+	    textalign 1
+		textfont UI_FONT_BIG
+	    textalignx 22
+	    textaligny 14
+	    border 1
+	    forecolor 0.2 0.8 0.2 1
+	    visible 0
+	}
 
+	itemDef {
+		name sofiasettings2
+		textfont UI_FONT_BIG
+		group grpsystem
+		type ITEM_TYPE_YESNO
+		text "Bullet Projectiles"
+		cvar "g_bulletProjectiles"
+		rect 82 70 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		mouseenter { setCvar "ui_sofia_desc" "Enable physical ballistic bullet entities instead of hitscan." }
+		mouseexit { setCvar "ui_sofia_desc" "" }
+	}
+
+	itemDef {
+		name sofiasettings2
+		textfont UI_FONT_BIG
+		group grpsystem
+		type ITEM_TYPE_YESNO
+		text "Bullet Gravity"
+		cvar "g_bulletGravity"
+		rect 82 85 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		mouseenter { setCvar "ui_sofia_desc" "Enable arc/drop physics on ballistic bullet projectiles." }
+		mouseexit { setCvar "ui_sofia_desc" "" }
+	}
+
+	itemDef {
+		name sofiasettings2
+		textfont UI_FONT_BIG
+		group grpsystem
+		type ITEM_TYPE_MULTI
+		text "Bullet Tracers"
+		cvar "cg_tracerchance"
+		cvarFloatList { "Off" 0 "Low (20%)" 0.2 "Standard (40%)" 0.4 "High (75%)" 0.75 "All Bullets (100%)" 1.0 }
+		rect 82 100 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		mouseenter { setCvar "ui_sofia_desc" "Controls the frequency of visible 3D bullet tracer lines." }
+		mouseexit { setCvar "ui_sofia_desc" "" }
+	}
+
+	itemDef {
+		name sofiasettings2
+		textfont UI_FONT_BIG
+		group grpsystem
+		type ITEM_TYPE_YESNO
+		text "Stealth Shadows (AI Logic)"
+		cvar "g_stealthShadows"
+		rect 82 115 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		mouseenter { setCvar "ui_sofia_desc" "AI sight detection is dynamically reduced when crouching in unlit shadow areas." }
+		mouseexit { setCvar "ui_sofia_desc" "" }
+	}
 
 }
-
 
 }

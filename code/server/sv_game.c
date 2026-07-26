@@ -997,9 +997,17 @@ void SV_InitGameProgs( void ) {
 	}
 
 	// load the dll or bytecode
-	gvm = VM_Create( "qagame", SV_GameSystemCalls, Cvar_VariableValue( "vm_game" ) );
+	vmInterpret_t interpret = (vmInterpret_t)Cvar_VariableIntegerValue( "vm_game" );
+	gvm = VM_Create( "qagame", SV_GameSystemCalls, interpret );
+
+	// Fallback to VMI_NATIVE if initial VM creation fails
+	if ( !gvm && interpret != VMI_NATIVE ) {
+		Com_Printf( "SV_InitGameVM: VM_Create with interpret=%d failed, falling back to VMI_NATIVE\n", (int)interpret );
+		gvm = VM_Create( "qagame", SV_GameSystemCalls, VMI_NATIVE );
+	}
+
 	if ( !gvm ) {
-		Com_Error( ERR_FATAL, "VM_Create on game failed" );
+		Com_Error( ERR_FATAL, "VM_Create on game failed (vm_game=%d)", (int)interpret );
 	}
 
 	SV_InitGameVM( qfalse );

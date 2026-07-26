@@ -18,6 +18,7 @@ NC='\033[0m' # No Color
 TARGET_DIR="/run/media/system/NVME_GAME_1/SteamLibrary/steamapps/common/RealRTCW"
 
 # 1. Parse arguments
+BUILD_STEAM=true
 CLEAN_BUILD=false
 RUN_AFTER_BUILD=false
 RUN_TESTS=false
@@ -25,6 +26,10 @@ RUN_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -n|--nosteam)
+            BUILD_STEAM=false
+            shift
+            ;;
         -c|--clean)
             CLEAN_BUILD=true
             shift
@@ -46,13 +51,15 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [options] [--game-args...]"
             echo ""
             echo "Options:"
+            echo "  -n, --nosteam   Build standalone executable without Steam integration."
             echo "  -c, --clean     Perform a clean build by running 'make clean' first."
             echo "  -t, --test      Build and run the pure algorithmic unit test suite."
-            echo "  -r, --run       Launch RealRTCW via the native Steam launcher script after a successful build."
+            echo "  -r, --run       Launch RealRTCW via the launcher script after a successful build."
             echo "                  All subsequent arguments are forwarded directly to the launcher."
             echo "  -h, --help      Display this help menu."
             echo ""
             echo "Examples:"
+            echo "  $0 --nosteam"
             echo "  $0 -c"
             echo "  $0 -t"
             echo "  $0 -r +set sv_cheats 1"
@@ -117,9 +124,18 @@ else
     fi
 fi
 
+if [ "$BUILD_STEAM" = true ]; then
+    STEAM_VAL=1
+    BUILD_FLAVOR="steam"
+else
+    STEAM_VAL=0
+    BUILD_FLAVOR="nosteam"
+fi
+BUILD_DIR_NAME="build/release-linux-x86_64-${BUILD_FLAVOR}"
+
 if [ "$CLEAN_BUILD" = true ]; then
     echo -e "${YELLOW}Clean build requested. Cleaning build artifacts...${NC}"
-    run_build_cmd make STEAM=1 clean
+    run_build_cmd make STEAM="${STEAM_VAL}" clean
 fi
 
 # Determine parallel build job factor
@@ -137,8 +153,8 @@ fi
 START_TIME=$(date +%s)
 
 # 3. Build the project
-echo -e "${GREEN}Compiling RealRTCW (STEAM=1) with ${NUM_JOBS} parallel jobs...${NC}"
-if ! run_build_cmd make -j"${NUM_JOBS}" STEAM=1; then
+echo -e "${GREEN}Compiling RealRTCW (STEAM=${STEAM_VAL}) with ${NUM_JOBS} parallel jobs...${NC}"
+if ! run_build_cmd make -j"${NUM_JOBS}" STEAM="${STEAM_VAL}"; then
     echo -e "${RED}Build failed! Try a clean build if you encountered configuration issues:${NC}"
     echo -e "${YELLOW}  ./compile.sh --clean${NC}"
     exit 1
@@ -146,18 +162,18 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
     echo -e "${BLUE}Compiling and running Algorithmic Unit Tests...${NC}"
-    if ! run_build_cmd make STEAM=1 build/release-linux-x86_64-steam/test_runner; then
+    if ! run_build_cmd make STEAM="${STEAM_VAL}" "${BUILD_DIR_NAME}/test_runner"; then
         echo -e "${RED}Failed to compile test_runner!${NC}"
         exit 1
     fi
-    if ! run_build_cmd ./build/release-linux-x86_64-steam/test_runner; then
+    if ! run_build_cmd ./"${BUILD_DIR_NAME}/test_runner"; then
         echo -e "${RED}Unit tests failed!${NC}"
         exit 1
     fi
 fi
 
-echo -e "${GREEN}Deploying compiled binaries to Steam directory...${NC}"
-if ! run_build_cmd make STEAM=1 COPYDIR="$TARGET_DIR" copyfiles; then
+echo -e "${GREEN}Deploying compiled binaries to target directory...${NC}"
+if ! run_build_cmd make STEAM="${STEAM_VAL}" COPYDIR="$TARGET_DIR" copyfiles; then
     echo -e "${RED}Deployment failed!${NC}"
     exit 1
 fi
@@ -184,93 +200,95 @@ if [ -f "$LAUNCHER_SRC" ]; then
     chmod +x "$LAUNCHER_DEST"
 fi
 
-# 3.5. Build and deploy Steamshim launcher natively
-echo -e "${BLUE}=== Compiling and Deploying Native Steam Launcher ===${NC}"
-echo -e "${GREEN}Detecting Steam library and Steamworks SDK headers...${NC}"
+# 3.5. Build and deploy Steamshim launcher natively (if STEAM build)
+if [ "$BUILD_STEAM" = true ]; then
+    echo -e "${BLUE}=== Compiling and Deploying Native Steam Launcher ===${NC}"
+    echo -e "${GREEN}Detecting Steam library and Steamworks SDK headers...${NC}"
 
-# Locate the Steam client's 64-bit steam_api library.
-STEAM_LIB_PATH=""
-for path in \
-  "$HOME/.steam/steam/ubuntu12_64" \
-  "$HOME/.local/share/Steam/ubuntu12_64" \
-  "$HOME/.local/share/Steam/steamrt64" \
-  "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/ubuntu12_64"
-do
-  if [ -f "$path/libsteam_api.so" ]; then
-    STEAM_LIB_PATH="$path"
-    break
-  fi
-done
+    # Locate the Steam client's 64-bit steam_api library.
+    STEAM_LIB_PATH=""
+    for path in \
+      "$HOME/.steam/steam/ubuntu12_64" \
+      "$HOME/.local/share/Steam/ubuntu12_64" \
+      "$HOME/.local/share/Steam/steamrt64" \
+      "$HOME/.var/app/com.valvesoftware.Steam/.local/share/Steam/ubuntu12_64"
+    do
+      if [ -f "$path/libsteam_api.so" ]; then
+        STEAM_LIB_PATH="$path"
+        break
+      fi
+    done
 
-if [ -z "$STEAM_LIB_PATH" ]; then
-    echo -e "${RED}Error: libsteam_api.so not found on the system. Cannot build Steamshim launcher.${NC}"
-    exit 1
+    if [ -z "$STEAM_LIB_PATH" ]; then
+        echo -e "${RED}Error: libsteam_api.so not found on the system. Cannot build Steamshim launcher.${NC}"
+        exit 1
+    fi
+    echo -e "Found libsteam_api.so at: ${YELLOW}$STEAM_LIB_PATH${NC}"
+
+    # Locate Steamworks SDK headers
+    STEAMWORKS_HEADERS=""
+    for path in \
+      "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_164" \
+      "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_161" \
+      "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_157" \
+      "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_153a"
+    do
+      if [ -f "$path/steam_api.h" ]; then
+        STEAMWORKS_HEADERS="$path"
+        break
+      fi
+    done
+
+    if [ -z "$STEAMWORKS_HEADERS" ]; then
+      # Try to find it dynamically in proton-ge-custom directory
+      PROTON_GE_DIR="/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom"
+      if [ -d "$PROTON_GE_DIR" ]; then
+        STEAMWORKS_HEADERS=$(find "$PROTON_GE_DIR" -name "steam_api.h" -path "*/steamworks_sdk_*" 2>/dev/null | head -n 1 | xargs dirname 2>/dev/null)
+      fi
+    fi
+
+    if [ -z "$STEAMWORKS_HEADERS" ] || [ ! -d "$STEAMWORKS_HEADERS" ]; then
+        echo -e "${RED}Error: Steamworks SDK headers not found. Cannot build Steamshim launcher.${NC}"
+        exit 1
+    fi
+    echo -e "Found Steamworks SDK headers at: ${YELLOW}$STEAMWORKS_HEADERS${NC}"
+
+    # Set up symlink to the headers
+    echo "Creating Steamworks SDK symlink..."
+    ln -sfn "$STEAMWORKS_HEADERS" "$SCRIPT_DIR/code/steamshim/launcher/steam"
+
+    # Compile Steamshim launcher
+    echo -e "${GREEN}Compiling Steamshim launcher natively...${NC}"
+    mkdir -p "$SCRIPT_DIR/${BUILD_DIR_NAME}"
+    if ! run_build_cmd g++ -o "$SCRIPT_DIR/${BUILD_DIR_NAME}/steamshim" \
+        -Wall -O2 -DRELEASE=1 \
+        "$SCRIPT_DIR/code/steamshim/launcher/steamshim_parent.cpp" \
+        -I "$SCRIPT_DIR/code/steamshim/launcher" \
+        -Wl,-rpath,'$ORIGIN' \
+        "$STEAM_LIB_PATH/libsteam_api.so"; then
+        echo -e "${RED}Failed to compile Steamshim launcher!${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}Deploying Steamshim launcher to Steam directory...${NC}"
+    cp -f "$SCRIPT_DIR/${BUILD_DIR_NAME}/steamshim" "$TARGET_DIR/steamshim"
+
+    # Backup and replace Windows launcher.x64.exe with the native Linux ELF launcher
+    if [ -f "$TARGET_DIR/launcher.x64.exe" ] && [ ! -f "$TARGET_DIR/launcher.x64.exe.bak" ]; then
+        echo "Backing up original Windows launcher..."
+        mv "$TARGET_DIR/launcher.x64.exe" "$TARGET_DIR/launcher.x64.exe.bak"
+    fi
+    cp -f "$SCRIPT_DIR/${BUILD_DIR_NAME}/steamshim" "$TARGET_DIR/launcher.x64.exe"
+
+    # Symlink libsteam_api.so to the target directory
+    if [ ! -f "$TARGET_DIR/libsteam_api.so" ]; then
+        echo "Symlinking libsteam_api.so..."
+        ln -sf "$STEAM_LIB_PATH/libsteam_api.so" "$TARGET_DIR/libsteam_api.so"
+    fi
+
+    # Ensure steam_appid.txt exists and contains the correct AppID
+    echo "1379630" > "$TARGET_DIR/steam_appid.txt"
 fi
-echo -e "Found libsteam_api.so at: ${YELLOW}$STEAM_LIB_PATH${NC}"
-
-# Locate Steamworks SDK headers
-STEAMWORKS_HEADERS=""
-for path in \
-  "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_164" \
-  "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_161" \
-  "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_157" \
-  "/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom/lsteamclient/steamworks_sdk_153a"
-do
-  if [ -f "$path/steam_api.h" ]; then
-    STEAMWORKS_HEADERS="$path"
-    break
-  fi
-done
-
-if [ -z "$STEAMWORKS_HEADERS" ]; then
-  # Try to find it dynamically in proton-ge-custom directory
-  PROTON_GE_DIR="/run/media/system/NVME_GAME_1/GitHub/proton-ge-custom"
-  if [ -d "$PROTON_GE_DIR" ]; then
-    STEAMWORKS_HEADERS=$(find "$PROTON_GE_DIR" -name "steam_api.h" -path "*/steamworks_sdk_*" 2>/dev/null | head -n 1 | xargs dirname 2>/dev/null)
-  fi
-fi
-
-if [ -z "$STEAMWORKS_HEADERS" ] || [ ! -d "$STEAMWORKS_HEADERS" ]; then
-    echo -e "${RED}Error: Steamworks SDK headers not found. Cannot build Steamshim launcher.${NC}"
-    exit 1
-fi
-echo -e "Found Steamworks SDK headers at: ${YELLOW}$STEAMWORKS_HEADERS${NC}"
-
-# Set up symlink to the headers
-echo "Creating Steamworks SDK symlink..."
-ln -sfn "$STEAMWORKS_HEADERS" "$SCRIPT_DIR/code/steamshim/launcher/steam"
-
-# Compile Steamshim launcher
-echo -e "${GREEN}Compiling Steamshim launcher natively...${NC}"
-mkdir -p "$SCRIPT_DIR/build/release-linux-x86_64-steam"
-if ! run_build_cmd g++ -o "$SCRIPT_DIR/build/release-linux-x86_64-steam/steamshim" \
-    -Wall -O2 -DRELEASE=1 \
-    "$SCRIPT_DIR/code/steamshim/launcher/steamshim_parent.cpp" \
-    -I "$SCRIPT_DIR/code/steamshim/launcher" \
-    -Wl,-rpath,'$ORIGIN' \
-    "$STEAM_LIB_PATH/libsteam_api.so"; then
-    echo -e "${RED}Failed to compile Steamshim launcher!${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}Deploying Steamshim launcher to Steam directory...${NC}"
-cp -f "$SCRIPT_DIR/build/release-linux-x86_64-steam/steamshim" "$TARGET_DIR/steamshim"
-
-# Backup and replace Windows launcher.x64.exe with the native Linux ELF launcher
-if [ -f "$TARGET_DIR/launcher.x64.exe" ] && [ ! -f "$TARGET_DIR/launcher.x64.exe.bak" ]; then
-    echo "Backing up original Windows launcher..."
-    mv "$TARGET_DIR/launcher.x64.exe" "$TARGET_DIR/launcher.x64.exe.bak"
-fi
-cp -f "$SCRIPT_DIR/build/release-linux-x86_64-steam/steamshim" "$TARGET_DIR/launcher.x64.exe"
-
-# Symlink libsteam_api.so to the target directory
-if [ ! -f "$TARGET_DIR/libsteam_api.so" ]; then
-    echo "Symlinking libsteam_api.so..."
-    ln -sf "$STEAM_LIB_PATH/libsteam_api.so" "$TARGET_DIR/libsteam_api.so"
-fi
-
-# Ensure steam_appid.txt exists and contains the correct AppID
-echo "1379630" > "$TARGET_DIR/steam_appid.txt"
 
 
 END_TIME=$(date +%s)
@@ -282,13 +300,13 @@ echo -e "  ${YELLOW}$TARGET_DIR/${NC}"
 
 # 4. Optional Auto-Run
 if [ "$RUN_AFTER_BUILD" = true ]; then
-    if [ -f "$LAUNCHER_DEST" ]; then
-        echo -e "${GREEN}Launching RealRTCW with arguments: ${RUN_ARGS[*]}...${NC}"
-        # We run the launcher script from the Steam folder
+    if [ "$BUILD_STEAM" = true ] && [ -f "$LAUNCHER_DEST" ]; then
+        echo -e "${GREEN}Launching RealRTCW (Steam mode) with arguments: ${RUN_ARGS[*]}...${NC}"
         cd "$TARGET_DIR"
         ./RealRTCW-native-launcher.sh "${RUN_ARGS[@]}"
     else
-        echo -e "${RED}Error: Launcher script not found at $LAUNCHER_DEST. Cannot launch game.${NC}"
-        exit 1
+        echo -e "${GREEN}Launching RealRTCW (Standalone mode) with arguments: ${RUN_ARGS[*]}...${NC}"
+        cd "$TARGET_DIR"
+        ./RealRTCW.x86_64 "${RUN_ARGS[@]}"
     fi
 fi

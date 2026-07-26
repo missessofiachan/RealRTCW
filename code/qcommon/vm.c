@@ -852,8 +852,10 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 		}
 	} while(retval >= 0);
 	
-	if(retval < 0)
+	if(retval < 0) {
+		Com_Memset(vm, 0, sizeof(*vm));
 		return NULL;
+	}
 
 	vm->systemCall = systemCalls;
 

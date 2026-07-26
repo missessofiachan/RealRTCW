@@ -2877,9 +2877,18 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 	shadowParts[1].shader = cgs.media.shadowFootShader;
 	shadowParts[2].shader = cgs.media.shadowTorsoShader;
 
+	int shadowMode;
+	qboolean isLocalPlayer = ( cg.snap && cent->currentState.number == cg.snap->ps.clientNum );
+
+	if ( isLocalPlayer ) {
+		shadowMode = ( cg_playerShadows.integer >= 0 ) ? cg_playerShadows.integer : cg_shadows.integer;
+	} else {
+		shadowMode = ( cg_enemyShadows.integer >= 0 ) ? cg_enemyShadows.integer : cg_shadows.integer;
+	}
+
 	*shadowPlane = 0;
 
-	if ( cg_shadows.integer == 0 ) {
+	if ( shadowMode == 0 ) {
 		return qfalse;
 	}
 
@@ -2901,7 +2910,7 @@ static qboolean CG_PlayerShadow( centity_t *cent, float *shadowPlane ) {
 
 	*shadowPlane = trace.endpos[2] + 1;
 
-	if ( cg_shadows.integer != 1 ) {    // no mark for stencil or projection shadows
+	if ( shadowMode != 1 ) {    // no mark for stencil or projection shadows
 		return qtrue;
 	}
 
@@ -4551,7 +4560,15 @@ void CG_Player( centity_t *cent ) {
 		renderfx = RF_THIRD_PERSON;         // only draw in mirrors
 	}
 
-	if ( ( cg_shadows.integer == 3 || ( cg_shadows.integer == 2 && cent->currentState.number == cg.snap->ps.clientNum && !cg.renderingThirdPerson ) ) && shadow ) {
+	int shadowMode;
+	qboolean isLocalPlayer = ( cent->currentState.number == cg.snap->ps.clientNum );
+	if ( isLocalPlayer ) {
+		shadowMode = ( cg_playerShadows.integer >= 0 ) ? cg_playerShadows.integer : cg_shadows.integer;
+	} else {
+		shadowMode = ( cg_enemyShadows.integer >= 0 ) ? cg_enemyShadows.integer : cg_shadows.integer;
+	}
+
+	if ( ( shadowMode == 3 || ( shadowMode == 2 && isLocalPlayer && !cg.renderingThirdPerson ) ) && shadow ) {
 		renderfx |= RF_SHADOW_PLANE;
 	}
 	renderfx |= RF_LIGHTING_ORIGIN;         // use the same origin for all

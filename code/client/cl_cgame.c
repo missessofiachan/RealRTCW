@@ -1011,7 +1011,7 @@ void CL_InitCGame( void ) {
 	Com_sprintf( cl.mapname, sizeof( cl.mapname ), "maps/%s.bsp", mapname );
 
 	// load the dll or bytecode
-	interpret = Cvar_VariableValue("vm_cgame");
+	interpret = (vmInterpret_t)Cvar_VariableIntegerValue("vm_cgame");
 	if(cl_connectedToPureServer)
 	{
 		// if sv_pure is set we only allow qvms to be loaded
@@ -1020,8 +1020,15 @@ void CL_InitCGame( void ) {
 	}
 
 	cgvm = VM_Create( "cgame", CL_CgameSystemCalls, interpret );
+
+	// Fallback to VMI_NATIVE if initial VM creation fails and not pure
+	if ( !cgvm && !cl_connectedToPureServer && interpret != VMI_NATIVE ) {
+		Com_Printf( "CL_InitCGame: VM_Create with interpret=%d failed, falling back to VMI_NATIVE\n", (int)interpret );
+		cgvm = VM_Create( "cgame", CL_CgameSystemCalls, VMI_NATIVE );
+	}
+
 	if ( !cgvm ) {
-		Com_Error( ERR_DROP, "VM_Create on cgame failed" );
+		Com_Error( ERR_DROP, "VM_Create on cgame failed (vm_cgame=%d)", (int)interpret );
 	}
 	clc.state = CA_LOADING;
 

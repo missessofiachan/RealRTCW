@@ -1162,11 +1162,20 @@ CL_InitUI
 
 void CL_InitUI( void ) {
 	int v;
+	vmInterpret_t interpret;
 
 	// load the dll or bytecode
-	uivm = VM_Create( "ui", CL_UISystemCalls, Cvar_VariableValue("vm_ui") );
+	interpret = (vmInterpret_t)Cvar_VariableIntegerValue("vm_ui");
+	uivm = VM_Create( "ui", CL_UISystemCalls, interpret );
+
+	// Fallback to VMI_NATIVE if initial VM creation fails
+	if ( !uivm && interpret != VMI_NATIVE ) {
+		Com_Printf( "CL_InitUI: VM_Create with interpret=%d failed, falling back to VMI_NATIVE\n", (int)interpret );
+		uivm = VM_Create( "ui", CL_UISystemCalls, VMI_NATIVE );
+	}
+
 	if ( !uivm ) {
-		Com_Error( ERR_FATAL, "VM_Create on UI failed" );
+		Com_Error( ERR_FATAL, "VM_Create on UI failed (vm_ui=%d)", (int)interpret );
 	}
 
 	// sanity check

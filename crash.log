@@ -1,0 +1,20 @@
+==================================================
+REALRTCW CRASH / ERROR LOG - 2026-07-26 17:43:15
+Reason: VM_Create on game failed
+Telemetry: Map='village1' | Res=1600x1024 (mode -2) | Unfocused=0 | Minimized=0 | Uptime=171886ms
+
+Callstack / Backtrace (12 frames):
+  [00] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x1051ed) [0x5051ed]
+  [01] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x1056e8) [0x5056e8]
+  [02] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x4a12d) [0x44a12d]
+  [03] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x8eca5) [0x48eca5]
+  [04] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x902ab) [0x4902ab]
+  [05] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x8643e) [0x48643e]
+  [06] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x465b9) [0x4465b9]
+  [07] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x4bbe9) [0x44bbe9]
+  [08] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x2515) [0x402515]
+  [09] /lib64/libc.so.6 (+0x3681) [0x7ffff5b21681]
+  [10] /lib64/libc.so.6 (__libc_start_main + 0x88) [0x7ffff5b21798]
+  [11] /run/media/system/NVME_GAME_1/GitHub/RealRTCW/build/release-linux-x86_64-nosteam (+0x2615) [0x402615]
+==================================================
+

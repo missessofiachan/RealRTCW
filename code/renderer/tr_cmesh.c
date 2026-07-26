@@ -498,7 +498,7 @@ void R_AddMDCSurfaces( trRefEntity_t *ent ) {
 		}
 
 		// projection shadows work fine with personal models, lamps, and map props
-		if ( r_shadows->integer >= 1
+		if ( ( ent->e.renderfx & RF_SHADOW_PLANE )
 			&& fogNum == 0
 			&& !(ent->e.renderfx & RF_DEPTHHACK)
 			&& shader->sort <= SS_BANNER ) {
