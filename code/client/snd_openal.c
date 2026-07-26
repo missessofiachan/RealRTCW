@@ -1165,6 +1165,8 @@ vec3_t lastListenerOrigin = { 0.0f, 0.0f, 0.0f };
 typedef struct sentity_s
 {
   vec3_t					origin;
+  vec3_t					velocity;
+  int						lastTime;
 
   qboolean						srcAllocated; // If a src_t has been allocated to this entity
   int							srcIndex;
@@ -1818,7 +1820,32 @@ void S_AL_UpdateEntityPosition( int entityNum, const vec3_t origin )
   S_AL_SanitiseVector( sanOrigin );
   if ( entityNum < 0 || entityNum >= MAX_GENTITIES )
     Com_Error( ERR_DROP, "S_UpdateEntityPosition: bad entitynum %i", entityNum );
-  VectorCopy( sanOrigin, entityList[entityNum].origin );
+
+  sentity_t *sent = &entityList[entityNum];
+  int now = Sys_Milliseconds();
+  int dt = now - sent->lastTime;
+
+  if (dt > 0 && dt < 1000 && (sent->origin[0] != 0.0f || sent->origin[1] != 0.0f || sent->origin[2] != 0.0f)) {
+    vec3_t instVel;
+    float invDt = 1000.0f / (float)dt;
+    instVel[0] = (sanOrigin[0] - sent->origin[0]) * invDt;
+    instVel[1] = (sanOrigin[1] - sent->origin[1]) * invDt;
+    instVel[2] = (sanOrigin[2] - sent->origin[2]) * invDt;
+
+    float speed = VectorLength(instVel);
+    if (speed > 15000.0f) {
+      // Teleport or spawn reset guard
+      VectorClear(sent->velocity);
+    } else {
+      // Exponential moving average filter for smooth Doppler shift
+      sent->velocity[0] = sent->velocity[0] * 0.70f + instVel[0] * 0.30f;
+      sent->velocity[1] = sent->velocity[1] * 0.70f + instVel[1] * 0.30f;
+      sent->velocity[2] = sent->velocity[2] * 0.70f + instVel[2] * 0.30f;
+    }
+  }
+
+  sent->lastTime = now;
+  VectorCopy( sanOrigin, sent->origin );
 }
 
 /*
@@ -2468,6 +2495,11 @@ void S_AL_SrcUpdate( void )
     if(curSource->isTracking && !state)
     {
       qalSourcefv(curSource->alSource, AL_POSITION, entityList[entityNum].origin);
+      if (s_doppler && s_doppler->integer) {
+        qalSourcefv(curSource->alSource, AL_VELOCITY, (ALfloat *)entityList[entityNum].velocity);
+      } else {
+        qalSourcefv(curSource->alSource, AL_VELOCITY, vec3_origin);
+      }
       S_AL_ScaleGain(curSource, entityList[entityNum].origin);
     }
 
@@ -3246,12 +3278,40 @@ void S_AL_Respatialize( int entityNum, const vec3_t origin, vec3_t axis[3], int 
   orientation[0] = axis[0][0]; orientation[1] = axis[0][1]; orientation[2] = axis[0][2];
   orientation[3] = axis[2][0]; orientation[4] = axis[2][1]; orientation[5] = axis[2][2];
 
+  static vec3_t lastListenerVelocity = { 0.0f, 0.0f, 0.0f };
+  static int lastListenerTime = 0;
+
+  int now = Sys_Milliseconds();
+  int dt = now - lastListenerTime;
+
+  if (dt > 0 && dt < 1000 && (lastListenerOrigin[0] != 0.0f || lastListenerOrigin[1] != 0.0f || lastListenerOrigin[2] != 0.0f)) {
+    vec3_t instVel;
+    float invDt = 1000.0f / (float)dt;
+    instVel[0] = (sorigin[0] - lastListenerOrigin[0]) * invDt;
+    instVel[1] = (sorigin[1] - lastListenerOrigin[1]) * invDt;
+    instVel[2] = (sorigin[2] - lastListenerOrigin[2]) * invDt;
+
+    float speed = VectorLength(instVel);
+    if (speed > 15000.0f) {
+      VectorClear(lastListenerVelocity);
+    } else {
+      lastListenerVelocity[0] = lastListenerVelocity[0] * 0.70f + instVel[0] * 0.30f;
+      lastListenerVelocity[1] = lastListenerVelocity[1] * 0.70f + instVel[1] * 0.30f;
+      lastListenerVelocity[2] = lastListenerVelocity[2] * 0.70f + instVel[2] * 0.30f;
+    }
+  }
+  lastListenerTime = now;
+
   lastListenerNumber = entityNum;
   VectorCopy( sorigin, lastListenerOrigin );
 
   // Set OpenAL listener paramaters
   qalListenerfv(AL_POSITION, (ALfloat *)sorigin);
-  qalListenerfv(AL_VELOCITY, vec3_origin);
+  if (s_doppler && s_doppler->integer) {
+    qalListenerfv(AL_VELOCITY, (ALfloat *)lastListenerVelocity);
+  } else {
+    qalListenerfv(AL_VELOCITY, vec3_origin);
+  }
   qalListenerfv(AL_ORIENTATION, orientation);
 }
 
