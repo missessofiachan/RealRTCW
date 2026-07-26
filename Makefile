@@ -1175,7 +1175,7 @@ endif
 
 ifneq ($(BUILD_CLIENT),0)
   ifneq ($(USE_RENDERER_DLOPEN),0)
-    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/renderer_sp_opengl1_$(SHLIBNAME)
+    TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT) $(B)/renderer_sp_opengl1_$(SHLIBNAME) $(B)/test_runner
   else
     TARGETS += $(B)/$(CLIENTBIN)$(FULLBINEXT)
   endif
@@ -1651,6 +1651,7 @@ makedirs:
 	@$(MKDIR) $(B)/renderer
 	@$(MKDIR) $(B)/ded
 	@$(MKDIR) $(B)/bspc
+	@$(MKDIR) $(B)/tests
 	@$(MKDIR) $(B)/$(BASEGAME)/cgame
 	@$(MKDIR) $(B)/$(BASEGAME)/game
 	@$(MKDIR) $(B)/$(BASEGAME)/ui
@@ -2861,6 +2862,21 @@ $(B)/client/%.o: $(CDIR)/%.c
 
 $(B)/client/%.o: $(SDIR)/%.c
 	$(DO_CC)
+
+TEST_RUNNER_OBJ = \
+  $(B)/tests/test_math.o \
+  $(B)/tests/test_vfs.o \
+  $(B)/tests/test_bvh.o \
+  $(B)/tests/test_main.o \
+  $(B)/client/q_math.o \
+  $(B)/client/q_shared.o
+
+$(B)/tests/%.o: $(MOUNT_DIR)/tests/%.c
+	$(DO_CC)
+
+$(B)/test_runner: $(TEST_RUNNER_OBJ)
+	$(echo_cmd) "LD $@"
+	$(Q)$(CC) $(CFLAGS) -o $@ $(TEST_RUNNER_OBJ) $(LIBS)
 
 $(B)/client/%.o: $(CMDIR)/%.c
 	$(DO_CC)

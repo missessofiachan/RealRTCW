@@ -20,12 +20,17 @@ TARGET_DIR="/run/media/system/NVME_GAME_1/SteamLibrary/steamapps/common/RealRTCW
 # 1. Parse arguments
 CLEAN_BUILD=false
 RUN_AFTER_BUILD=false
+RUN_TESTS=false
 RUN_ARGS=()
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -c|--clean)
             CLEAN_BUILD=true
+            shift
+            ;;
+        -t|--test)
+            RUN_TESTS=true
             shift
             ;;
         -r|--run)
@@ -42,12 +47,14 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  -c, --clean     Perform a clean build by running 'make clean' first."
+            echo "  -t, --test      Build and run the pure algorithmic unit test suite."
             echo "  -r, --run       Launch RealRTCW via the native Steam launcher script after a successful build."
             echo "                  All subsequent arguments are forwarded directly to the launcher."
             echo "  -h, --help      Display this help menu."
             echo ""
             echo "Examples:"
             echo "  $0 -c"
+            echo "  $0 -t"
             echo "  $0 -r +set sv_cheats 1"
             exit 0
             ;;
@@ -135,6 +142,18 @@ if ! run_build_cmd make -j"${NUM_JOBS}" STEAM=1; then
     echo -e "${RED}Build failed! Try a clean build if you encountered configuration issues:${NC}"
     echo -e "${YELLOW}  ./compile.sh --clean${NC}"
     exit 1
+fi
+
+if [ "$RUN_TESTS" = true ]; then
+    echo -e "${BLUE}Compiling and running Algorithmic Unit Tests...${NC}"
+    if ! run_build_cmd make STEAM=1 build/release-linux-x86_64-steam/test_runner; then
+        echo -e "${RED}Failed to compile test_runner!${NC}"
+        exit 1
+    fi
+    if ! run_build_cmd ./build/release-linux-x86_64-steam/test_runner; then
+        echo -e "${RED}Unit tests failed!${NC}"
+        exit 1
+    fi
 fi
 
 echo -e "${GREEN}Deploying compiled binaries to Steam directory...${NC}"
