@@ -240,7 +240,23 @@ static long long FFMPEG_Seek( void *opaque, long long offset, int whence ) {
 		}
 	}
 
-    if ( FS_Seek( cinTable[currentHandle].iFile, offset, whence ) < 0 ) {
+    int fsWhence;
+    switch( whence ) {
+    case SEEK_SET:
+        fsWhence = FS_SEEK_SET;
+        break;
+    case SEEK_CUR:
+        fsWhence = FS_SEEK_CUR;
+        break;
+    case SEEK_END:
+        fsWhence = FS_SEEK_END;
+        break;
+    default:
+        fsWhence = whence;
+        break;
+    }
+
+    if ( FS_Seek( cinTable[currentHandle].iFile, offset, fsWhence ) < 0 ) {
         return -1;
 	}
 

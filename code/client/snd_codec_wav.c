@@ -135,12 +135,15 @@ static qboolean S_ReadRIFFHeader(fileHandle_t file, snd_info_t *info)
 	int fmtlen = 0;
 
 	// skip the riff wav header
-	FS_Read(dump, 12, file);
+	if ( FS_Read(dump, 12, file) != 12 || Q_strncmp(dump, "RIFF", 4) || Q_strncmp(dump + 8, "WAVE", 4) )
+	{
+		return qfalse;
+	}
 
 	// Scan for the format chunk
 	if((fmtlen = S_FindRIFFChunk(file, "fmt ")) < 0)
 	{
-		Com_Printf( S_COLOR_RED "ERROR: Couldn't find \"fmt\" chunk\n");
+		Com_Printf( S_COLOR_YELLOW "WARNING: Couldn't find \"fmt\" chunk\n");
 		return qfalse;
 	}
 
