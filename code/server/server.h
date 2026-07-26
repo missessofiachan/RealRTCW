@@ -471,6 +471,17 @@ void SV_BotInitBotLib(void);
 // high level object sorting to reduce interaction tests
 //
 
+extern cvar_t  *sv_enableDynamicBVH;
+extern cvar_t  *sv_bvhDebug;
+
+void SV_BVH_Init( void );
+void SV_BVH_Shutdown( void );
+void SV_BVH_Clear( void );
+void SV_BVH_InsertEntity( sharedEntity_t *gEnt );
+void SV_BVH_RemoveEntity( sharedEntity_t *gEnt );
+void SV_BVH_UpdateEntity( sharedEntity_t *gEnt );
+int  SV_BVH_QueryArea( const vec3_t mins, const vec3_t maxs, int *entityList, int maxcount );
+
 void SV_ClearWorld( void );
 // called after the world model has been loaded, before linking any entities
 

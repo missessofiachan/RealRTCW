@@ -162,6 +162,7 @@ void SV_ClearWorld( void ) {
 	h = CM_InlineModel( 0 );
 	CM_ModelBounds( h, mins, maxs );
 	SV_CreateworldSector( 0, mins, maxs );
+	SV_BVH_Clear();
 }
 
 
@@ -175,6 +176,8 @@ void SV_UnlinkEntity( sharedEntity_t *gEnt ) {
 	svEntity_t      *ent;
 	svEntity_t      *scan;
 	worldSector_t   *ws;
+
+	SV_BVH_RemoveEntity( gEnt );
 
 	ent = SV_SvEntityForGentity( gEnt );
 
@@ -373,6 +376,8 @@ void SV_LinkEntity( sharedEntity_t *gEnt ) {
 	node->entities = ent;
 
 	gEnt->r.linked = qtrue;
+
+	SV_BVH_InsertEntity( gEnt );
 }
 
 /*
@@ -445,17 +450,35 @@ SV_AreaEntities
 ================
 */
 int SV_AreaEntities( const vec3_t mins, const vec3_t maxs, int *entityList, int maxcount ) {
-	areaParms_t ap;
+	if ( sv_enableDynamicBVH && sv_enableDynamicBVH->integer ) {
+		int bvhCount = SV_BVH_QueryArea( mins, maxs, entityList, maxcount );
+		if ( sv_bvhDebug && sv_bvhDebug->integer ) {
+			areaParms_t ap;
+			int legacyList[MAX_GENTITIES];
+			ap.mins = mins;
+			ap.maxs = maxs;
+			ap.list = legacyList;
+			ap.count = 0;
+			ap.maxcount = maxcount;
+			SV_AreaEntities_r( sv_worldSectors, &ap );
+			if ( bvhCount != ap.count ) {
+				Com_DPrintf( "BVH mismatch: BVH=%d Legacy=%d\n", bvhCount, ap.count );
+			}
+		}
+		return bvhCount;
+	} else {
+		areaParms_t ap;
 
-	ap.mins = mins;
-	ap.maxs = maxs;
-	ap.list = entityList;
-	ap.count = 0;
-	ap.maxcount = maxcount;
+		ap.mins = mins;
+		ap.maxs = maxs;
+		ap.list = entityList;
+		ap.count = 0;
+		ap.maxcount = maxcount;
 
-	SV_AreaEntities_r( sv_worldSectors, &ap );
+		SV_AreaEntities_r( sv_worldSectors, &ap );
 
-	return ap.count;
+		return ap.count;
+	}
 }
 
 

@@ -9,7 +9,7 @@ This repository is a modernized, high-performance fork of the **Return to Castle
 | Module | Focus Area | Key Technologies & Core Files |
 | --- | --- | --- |
 | **Virtual Filesystem** | VFS Performance & I/O Reduction | `files.c`, AVX2, Directory Caching, Tokenized Filtering |
-| **Collision & Maps** | Physics Hulls & Spatial Queries | `cm_load.c`, `cm_trace.c`, Branchless Box Optimization |
+| **Collision & Spatial Index** | Physics Hulls, Dynamic BVH & Traces | `cm_load.c`, `cm_trace.c`, `sv_bvh.c`, Dynamic AABB Tree, Branchless Box Optimization |
 | **Multithreading** | Parallelization & Job Dispatching | `gp_jobsystem`, Work Stealing, Batched Submissions, Skeletal Skinning |
 | **Audio Pipeline** | Spatial Audio & Reverb Simulation | OpenAL EFX, EAX, 128-bit SSE Audio Mixer |
 | **Renderer & Shading** | Cinematic Visuals & Tech Modernization | Full-Body MDS Character Shadows, 1st-Person Fallback, Z-Fail Stencil, Pseudo-Soft Shadows, PBR Attenuation |
@@ -30,8 +30,9 @@ This repository is a modernized, high-performance fork of the **Return to Castle
 * **Multi-Segment Path Filtering**: Replaces legacy wildcard string matching with tokenized multi-segment filtering to speed up asset matching across thousands of files and strictly enforce absolute segment priorities.
 * **Increased File Tracking Limits**: Raised the `MAX_FOUND_FILES` limit to allow the tracker to index thousands of custom assets simultaneously, preventing crashes on massive total-conversion mods.
 
-### 📐 Collision Model & Map Loading (`cm_load.c` / `cm_trace.c`)
+### 📐 Collision Model, Dynamic BVH & Map Loading (`cm_load.c` / `cm_trace.c` / `sv_bvh.c`)
 
+* **Dynamic AABB Tree / BVH Spatial Index (`sv_bvh.c`)**: Introduces a dynamic Axis-Aligned Bounding Box (AABB) tree / Bounding Volume Hierarchy (BVH) specifically for active moving entities (projectiles, bots, moving doors/props, hazards). Prunes linear entity searches during `SV_AreaEntities` and `SV_ClipMoveToEntities` spatial queries using Surface Area Heuristic (SAH) tree insertions, fat AABB expansion (`BVH_FAT_AABB_PAD`), and dynamic refitting. Features runtime cvar toggles (`sv_enableDynamicBVH` and `sv_bvhDebug`) for instant fallback and validation.
 * **RAM-Based Map Caching**: Retains decompressed map collision hulls and geometry in system memory, making level loads and quickloads near-instantaneous by bypassing disk extraction.
 * **Branchless Box Collision Math**: Redesigns spatial ray-intersection checks inside bounding box clipping tasks using branchless vector min/max selections, preventing CPU instruction pipeline stalls from branch mispredictions.
 * **Model Bounds Loading Fix**: Corrected the modelbounds parsing logic on world asset clip layers, ensuring projectile hitboxes align perfectly with physics shapes at all angles.

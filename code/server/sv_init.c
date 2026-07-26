@@ -484,6 +484,7 @@ static void SV_Startup( void ) {
 	}
 
 	Cvar_Set( "sv_running", "1" );
+	SV_BVH_Init();
 
 	// Join the ipv6 multicast group now that a map is running so clients can scan for us on the local network.
 	NET_JoinMulticast6();
@@ -1165,6 +1166,7 @@ void SV_Shutdown( char *finalmsg ) {
 	SV_RemoveOperatorCommands();
 	SV_MasterShutdown();
 	SV_ShutdownGameProgs();
+	SV_BVH_Shutdown();
 
 	// free current level
 	SV_ClearServer();
