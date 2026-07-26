@@ -913,7 +913,7 @@ static int CG_CalcFov( void ) {
 		cg.fov = fov_x = 90;
 	} else {
 		// user selectable
-        if ( ( cgs.dmflags & DF_FIXED_FOV ) || ( cg_fixedAspect.integer && cg_fixedAspectFOV.integer ) ) {
+        if ( cgs.dmflags & DF_FIXED_FOV ) {
 			// dmflag to prevent wide fov for all clients
 			fov_x = 90;
 		} else {
@@ -1419,7 +1419,7 @@ void CG_DrawSkyBoxPortal( void ) {
 			fov_x = 90;
 		} else {
 			// user selectable
-            if ( ( cgs.dmflags & DF_FIXED_FOV ) || ( cg_fixedAspect.integer && cg_fixedAspectFOV.integer ) ) {
+            if ( cgs.dmflags & DF_FIXED_FOV ) {
 				// dmflag to prevent wide fov for all clients
 				fov_x = 90;
 			} else {

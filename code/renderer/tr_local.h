@@ -2086,11 +2086,18 @@ void R_InitFreeType( void );
 void R_DoneFreeType( void );
 void RE_RegisterFont( const char *fontName, int pointSize, fontInfo_t *font );
 
+extern cvar_t   *r_postAA;
+
 #ifdef USE_BLOOM
 //Bloom Stuff
 void R_BloomInit( void );
 void R_BloomScreen( void );
 #endif
+
+// Post-Process Anti-Aliasing (FXAA / SMAA)
+void R_InitPostAA( void );
+void R_ShutdownPostAA( void );
+void RB_PostProcessAA( void );
 
 //------------------------------------------------------------------------------
 // Ridah, mesh compression

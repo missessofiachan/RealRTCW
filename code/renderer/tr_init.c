@@ -176,6 +176,7 @@ cvar_t  *r_noborder;
 cvar_t  *r_customwidth;
 cvar_t  *r_customheight;
 cvar_t	*r_customPixelAspect;
+cvar_t  *r_postAA;
 
 cvar_t  *r_overBrightBits;
 cvar_t  *r_mapOverBrightBits;
@@ -1393,6 +1394,8 @@ void R_Register( void ) {
 	r_maxpolyverts = ri.Cvar_Get( "r_maxpolyverts", va( "%d", MAX_POLYVERTS ), 0 );
 
 	r_highQualityVideo = ri.Cvar_Get( "r_highQualityVideo", "1", CVAR_ARCHIVE );
+	r_postAA = ri.Cvar_Get( "r_postAA", "0", CVAR_ARCHIVE );
+	ri.Cvar_CheckRange( r_postAA, 0, 2, qtrue );
 	// make sure all the commands added here are also
 	// removed in R_Shutdown
 	ri.Cmd_AddCommand( "imagelist", R_ImageList_f );
@@ -1471,6 +1474,8 @@ void R_Init( void ) {
 	R_BloomInit();
 #endif
 
+	R_InitPostAA();
+
 	// Ridah, init the virtual memory
 	R_Hunk_Begin();
 
@@ -1543,6 +1548,8 @@ void RE_Shutdown( qboolean destroyWindow ) {
 		R_IssuePendingRenderCommands();
 		R_DeleteTextures();
 	}
+
+	R_ShutdownPostAA();
 
 	R_DoneFreeType();
 

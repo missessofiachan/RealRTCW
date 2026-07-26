@@ -619,6 +619,26 @@ open in_vid_restart_popmenu ; hide graphics ; hide graphicsapply ; hide iortcwgr
       	visible 0 
 		action { uiScript glCustom }
     }
+
+	itemDef {
+		name iortcwgraphics
+		group grpsystem
+		type ITEM_TYPE_MULTI
+		textfont UI_FONT_BIG
+		text "Post-Process AA:"
+		cvar "r_postAA"
+		cvarFloatList { "Off" 0 "FXAA" 1 "SMAA" 2 }
+		rect 82 275 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142 
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		action { uiScript glCustom }
+	}
 	
 	
 	
@@ -1680,6 +1700,26 @@ open in_snd_restart_popmenu ; hide sound ; hide sofiasettings ; hide applysystem
 		forecolor 1 1 1 1
 		visible 0 
 		mouseenter { setCvar "ui_sofia_desc" "AI sight detection is dynamically reduced when crouching in unlit shadow areas." }
+		mouseexit { setCvar "ui_sofia_desc" "" }
+	}
+
+	itemDef {
+		name sofiasettings2
+		textfont UI_FONT_BIG
+		group grpsystem
+		type ITEM_TYPE_SLIDER
+		text "Weapon FOV (Gun FOV)"
+		cvarfloat "cg_gunFov" 0 0 120
+		rect 82 130 290 12
+		textalign ITEM_ALIGN_RIGHT
+		textalignx 142
+		textaligny 10
+		textscale .22 
+		style WINDOW_STYLE_FILLED
+		backcolor 1 1 1 .07       
+		forecolor 1 1 1 1
+		visible 0 
+		mouseenter { setCvar "ui_sofia_desc" "Adjust 1st-person weapon viewmodel FOV perspective (0 = default/matches main FOV)." }
 		mouseexit { setCvar "ui_sofia_desc" "" }
 	}
 

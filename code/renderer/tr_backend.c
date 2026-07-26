@@ -1713,6 +1713,7 @@ void RB_ExecuteRenderCommands( const void *data ) {
 			//Check if it's time for BLOOM!
 			R_BloomScreen();
 #endif
+			RB_PostProcessAA();
 			data = RB_SwapBuffers( data );
 			break;
 		case RC_SCREENSHOT:
