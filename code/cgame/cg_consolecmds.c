@@ -211,6 +211,10 @@ static void CG_InventoryUp_f( void ) {
 
 static void CG_WeaponWheelDown_f( void ) {
 
+	if ( !cg.snap ) {
+		return;
+	}
+
 	if (cg.snap->ps.eFlags & EF_MG42_ACTIVE)
 	{
 		return;

@@ -410,7 +410,7 @@ void R_AddAnimSurfaces( trRefEntity_t *ent ) {
 		}
 
 		// projection shadows work fine with personal models, lamps, and map props
-		if ( r_shadows->integer == 3
+		if ( r_shadows->integer >= 1
 			&& fogNum == 0
 			&& !(ent->e.renderfx & RF_DEPTHHACK)
 			&& shader->sort <= SS_BANNER ) {
@@ -1741,7 +1741,7 @@ void R_MDRAddAnimSurfaces( trRefEntity_t *ent ) {
 		}
 
 		// projection shadows work fine with personal models, lamps, and map props
-		if ( r_shadows->integer == 3
+		if ( r_shadows->integer >= 1
 			&& fogNum == 0
 			&& !(ent->e.renderfx & RF_DEPTHHACK)
 			&& shader->sort <= SS_BANNER )
@@ -1777,10 +1777,6 @@ void RB_MDRSurfaceAnim( mdrSurface_t *surface )
 
 	int			frameSize;
 
-	if (!backEnd.currentEntity) {
-		return;
-	}
-
 	// don't lerp if lerping off, or this is the only frame, or the last frame...
 	//
 	if (backEnd.currentEntity->e.oldframe == backEnd.currentEntity->e.frame) 
@@ -1796,28 +1792,12 @@ void RB_MDRSurfaceAnim( mdrSurface_t *surface )
 
 	header = (mdrHeader_t *)((byte *)surface + surface->ofsHeader);
 
-	int numFrames = header->numFrames;
-	int frameIdx = backEnd.currentEntity->e.frame;
-	int oldFrameIdx = backEnd.currentEntity->e.oldframe;
-
-	if ( numFrames > 0 ) {
-		if ( frameIdx < 0 || frameIdx >= numFrames ) {
-			frameIdx = ( frameIdx % numFrames + numFrames ) % numFrames;
-		}
-		if ( oldFrameIdx < 0 || oldFrameIdx >= numFrames ) {
-			oldFrameIdx = ( oldFrameIdx % numFrames + numFrames ) % numFrames;
-		}
-	} else {
-		frameIdx = 0;
-		oldFrameIdx = 0;
-	}
-
 	frameSize = (size_t)( &((mdrFrame_t *)0)->bones[ header->numBones ] );
 
 	frame = (mdrFrame_t *)((byte *)header + header->ofsFrames +
-		frameIdx * frameSize );
+		backEnd.currentEntity->e.frame * frameSize );
 	oldFrame = (mdrFrame_t *)((byte *)header + header->ofsFrames +
-		oldFrameIdx * frameSize );
+		backEnd.currentEntity->e.oldframe * frameSize );
 
 	RB_CHECKOVERFLOW( surface->numVerts, surface->numTriangles * 3 );
 

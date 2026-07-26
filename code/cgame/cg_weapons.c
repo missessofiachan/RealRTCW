@@ -4588,16 +4588,18 @@ CG_AltfireWeapon_f
 */
 void CG_AltWeapon_f( void ) {
 	int original, num;
-	float spd = VectorLength( cg.snap->ps.velocity );
+	float spd;
 
-	if (cg.snap && cg.snap->ps.weapon == WP_KNIFE)
-	{
-		// Dirty hack
-		trap_SendConsoleCommand(" +attack2; -attack2\n");
+	if ( !cg.snap ) {
 		return;
 	}
 
-	if ( !cg.snap ) {
+	spd = VectorLength( cg.snap->ps.velocity );
+
+	if (cg.snap->ps.weapon == WP_KNIFE)
+	{
+		// Dirty hack
+		trap_SendConsoleCommand(" +attack2; -attack2\n");
 		return;
 	}
 	if ( cg.snap->ps.pm_flags & PMF_FOLLOW ) {
@@ -4934,6 +4936,10 @@ CG_LastWeaponUsed_f
 ==============
 */
 void CG_LastWeaponUsed_f( void ) {
+	if ( !cg.snap ) {
+		return;
+	}
+
 	if ( cg.time - cg.weaponSelectTime < cg_weaponCycleDelay.integer ) {
 		return; // force pause so holding it down won't go too fast
 	}
@@ -4959,6 +4965,9 @@ CG_NextWeaponInBank_f
 ==============
 */
 void CG_NextWeaponInBank_f( void ) {
+	if ( !cg.snap ) {
+		return;
+	}
 
 	if ( cg.time - cg.weaponSelectTime < cg_weaponCycleDelay.integer ) {
 		return; // force pause so holding it down won't go too fast
@@ -4991,6 +5000,9 @@ CG_PrevWeaponInBank_f
 ==============
 */
 void CG_PrevWeaponInBank_f( void ) {
+	if ( !cg.snap ) {
+		return;
+	}
 
 	if ( cg.time - cg.weaponSelectTime < cg_weaponCycleDelay.integer ) {
 		return; // force pause so holding it down won't go too fast
@@ -5104,11 +5116,11 @@ void CG_WeaponBank_f( void ) {
 	int num, i, curweap;
 	int curbank = 0, curcycle = 0, bank = 0, cycle = 0;
 	
-	trap_S_StartSoundEx(NULL, cg.snap->ps.clientNum, CHAN_WEAPON, cgs.media.nullSound, SND_CUTOFF);
-
 	if ( !cg.snap ) {
 		return;
 	}
+
+	trap_S_StartSoundEx(NULL, cg.snap->ps.clientNum, CHAN_WEAPON, cgs.media.nullSound, SND_CUTOFF);
 
 	if ( cg.snap->ps.pm_flags & PMF_FOLLOW ) {
 		return;
@@ -5167,11 +5179,11 @@ void CG_Weapon_f( void ) {
 	int bank = 0, cycle = 0, newbank = 0, newcycle = 0;
 	qboolean banked = qfalse;
 
-	trap_S_StartSoundEx(NULL, cg.snap->ps.clientNum, CHAN_WEAPON, cgs.media.nullSound, SND_CUTOFF);
-
 	if ( !cg.snap ) {
 		return;
 	}
+
+	trap_S_StartSoundEx(NULL, cg.snap->ps.clientNum, CHAN_WEAPON, cgs.media.nullSound, SND_CUTOFF);
 
 	if ( cg.snap->ps.pm_flags & PMF_FOLLOW ) {
 		return;

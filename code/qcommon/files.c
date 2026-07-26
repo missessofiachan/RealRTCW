@@ -1198,12 +1198,20 @@ long FS_filelength(fileHandle_t f)
 {
 	FILE	*h;
 
+	if ( f <= 0 || f >= MAX_FILE_HANDLES ) {
+		return -1;
+	}
+
+	if ( fsh[f].zipFile == qtrue ) {
+		return FS_filelengthInPak( f );
+	}
+
 	h = FS_FileForHandle( f );
 
-	if(h == NULL)
+	if ( h == NULL )
 		return -1;
 	else
-		return FS_fplength(h);
+		return FS_fplength( h );
 }
 
 /*
