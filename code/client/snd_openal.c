@@ -2146,6 +2146,94 @@ void S_AL_StopLoopingSound(int entityNum )
 }
 
 /*
+==========================
+S_AL_CalculateDiffractionHF
+
+Calculates acoustic diffraction gain and HF attenuation when direct
+line-of-sight between listener and sound source is obstructed.
+Evaluates portal area path length and 2-segment diffracted paths.
+==========================
+*/
+static void S_AL_CalculateDiffractionHF( const vec3_t listenerPos, const vec3_t sourcePos, float *outGain, float *outGainHF )
+{
+	trace_t tr;
+	CM_BoxTrace(&tr, listenerPos, sourcePos, NULL, NULL, 0, MASK_SOLID, qfalse);
+
+	if (tr.fraction >= 1.0f || tr.startsolid) {
+		// Direct line of sight - unoccluded
+		*outGain = 1.0f;
+		*outGainHF = 1.0f;
+		return;
+	}
+
+	int listenerLeaf = CM_PointLeafnum(listenerPos);
+	int listenerArea = CM_LeafArea(listenerLeaf);
+	int sourceLeaf = CM_PointLeafnum(sourcePos);
+	int sourceArea = CM_LeafArea(sourceLeaf);
+
+	float gain = 0.85f;
+	float gainHF = 0.40f;
+
+	if (listenerArea != sourceArea && listenerArea > 0 && sourceArea > 0) {
+		int pathLen = CM_GetAreaPathLength(sourceArea, listenerArea);
+		if (pathLen < 0) {
+			// Fully blocked by closed doors or non-connected areas
+			*outGain = 0.50f;
+			*outGainHF = 0.05f;
+			return;
+		} else if (pathLen == 0) {
+			// Direct area connection (doorway / portal opening)
+			vec3_t dirToSource, dirToHit;
+			VectorSubtract(sourcePos, listenerPos, dirToSource);
+			VectorNormalize(dirToSource);
+
+			VectorSubtract(tr.endpos, listenerPos, dirToHit);
+			VectorNormalize(dirToHit);
+
+			float dot = DotProduct(dirToSource, dirToHit);
+			if (dot < -1.0f) dot = -1.0f;
+			if (dot > 1.0f) dot = 1.0f;
+
+			// Diffraction angle theta
+			float theta = acosf(dot);
+			float cosHalf = cosf(theta * 0.5f);
+			float diffScale = cosHalf * cosHalf; // cos^2(theta / 2)
+
+			gainHF = 0.30f + 0.55f * diffScale;
+			gain = 0.75f + 0.15f * diffScale;
+		} else {
+			// Multi-area corridor pathing
+			gainHF = 0.8f * powf(0.65f, (float)pathLen);
+			if (gainHF < 0.10f) gainHF = 0.10f;
+			gain = 0.8f * powf(0.85f, (float)pathLen);
+			if (gain < 0.35f) gain = 0.35f;
+		}
+	} else {
+		// Same room, direct obstacle obstruction (e.g. pillar or corner wall)
+		vec3_t dirToSource, dirToHit;
+		VectorSubtract(sourcePos, listenerPos, dirToSource);
+		VectorNormalize(dirToSource);
+
+		VectorSubtract(tr.endpos, listenerPos, dirToHit);
+		VectorNormalize(dirToHit);
+
+		float dot = DotProduct(dirToSource, dirToHit);
+		if (dot < -1.0f) dot = -1.0f;
+		if (dot > 1.0f) dot = 1.0f;
+
+		float theta = acosf(dot);
+		float cosHalf = cosf(theta * 0.5f);
+		float diffScale = cosHalf * cosHalf;
+
+		gainHF = 0.25f + 0.50f * diffScale;
+		gain = 0.80f + 0.10f * diffScale;
+	}
+
+	*outGain = gain;
+	*outGainHF = gainHF;
+}
+
+/*
    =================
    S_AL_SrcUpdate
 
@@ -2367,32 +2455,14 @@ void S_AL_SrcUpdate( void )
 
       if (qalGenFilters && curSource->directFilter)
       {
-        trace_t tr;
-        CM_BoxTrace(&tr, lastListenerOrigin, sourcePos, NULL, NULL, 0, MASK_SOLID, qfalse);
-        if (tr.fraction < 1.0f && !tr.startsolid)
-        {
-          int listenerLeaf = CM_PointLeafnum(lastListenerOrigin);
-          int listenerArea = CM_LeafArea(listenerLeaf);
-          int sourceLeaf = CM_PointLeafnum(sourcePos);
-          int sourceArea = CM_LeafArea(sourceLeaf);
-          
-          float gainHF = 0.25f;
-          
-          if (listenerArea != sourceArea) {
-            int pathLen = CM_GetAreaPathLength(sourceArea, listenerArea);
-            if (pathLen < 0) {
-              gainHF = 0.05f; // Blocked by closed doors
-            } else {
-              gainHF = 0.8f * powf(0.7f, (float)pathLen);
-              if (gainHF < 0.1f) gainHF = 0.1f;
-            }
-          } else {
-            // Same room, direct obstruction
-            gainHF = 0.4f;
-          }
+        float gain = 1.0f;
+        float gainHF = 1.0f;
+        S_AL_CalculateDiffractionHF(lastListenerOrigin, sourcePos, &gain, &gainHF);
 
+        if (gainHF < 0.99f || gain < 0.99f)
+        {
           qalFilteri(curSource->directFilter, AL_FILTER_TYPE, AL_FILTER_LOWPASS);
-          qalFilterf(curSource->directFilter, AL_LOWPASS_GAIN, 0.8f);
+          qalFilterf(curSource->directFilter, AL_LOWPASS_GAIN, gain);
           qalFilterf(curSource->directFilter, AL_LOWPASS_GAINHF, gainHF);
           qalSourcei(curSource->alSource, AL_DIRECT_FILTER, curSource->directFilter);
         }
